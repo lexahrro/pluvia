@@ -72,16 +72,16 @@ function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 const CX = 150;
-const CY = 90;
-const RX = 120;
-const RY = 70;
+const CY = 112;
+const RX = 100;
+const RY = 100;
 
 /** Arc du soleil avec sa position actuelle entre le lever et le coucher. */
 function renderArc(state: SunState): SVGSVGElement {
-  const root = svg('svg', { viewBox: '0 0 300 110', class: 'sun-arc', role: 'img' });
+  const root = svg('svg', { viewBox: '0 0 300 124', class: 'sun-arc', role: 'img' });
   root.setAttribute('aria-label', 'Position du soleil entre le lever et le coucher');
   root.append(
-    svg('line', { x1: '10', y1: String(CY), x2: '290', y2: String(CY), class: 'sun-horizon' }),
+    svg('line', { x1: '20', y1: String(CY), x2: '280', y2: String(CY), class: 'sun-horizon' }),
     svg('path', { d: `M ${CX - RX} ${CY} A ${RX} ${RY} 0 0 1 ${CX + RX} ${CY}`, class: 'sun-path' }),
   );
   // Le marqueur suit l'arc le jour ; la nuit, il reste à l'horizon, côté lever ou côté coucher.
