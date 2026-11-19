@@ -1,0 +1,380 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --bg-top: #0f2a4a;
+  --bg-bottom: #0b1d33;
+  --card: rgba(255, 255, 255, 0.07);
+  --fg: #e8f1fb;
+  --muted: #9bb2cc;
+  --accent: #4fc3f7;
+  --light: #4fc3f7;
+  --moderate: #2f80ed;
+  --heavy: #9575ff;
+  --dry: rgba(255, 255, 255, 0.25);
+  --warn: #ffb74d;
+  --error: #ef5350;
+}
+
+/* Ambiance selon la pluie la plus forte prévue */
+html[data-mood='light'] {
+  --bg-top: #20476f;
+  --bg-bottom: #112a45;
+}
+
+html[data-mood='moderate'] {
+  --bg-top: #1c3a78;
+  --bg-bottom: #0f1f45;
+}
+
+html[data-mood='heavy'] {
+  --bg-top: #33297a;
+  --bg-bottom: #150f38;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: linear-gradient(var(--bg-top), var(--bg-bottom)) fixed;
+  color: var(--fg);
+}
+
+.screen {
+  min-height: 100dvh;
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 1.5rem) 1.25rem calc(env(safe-area-inset-bottom) + 1rem);
+  display: flex;
+  flex-direction: column;
+}
+
+h1 {
+  margin: 0 0 1rem;
+  color: var(--accent);
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+}
+
+.content {
+  flex: 1;
+}
+
+.hero {
+  margin-bottom: 1.25rem;
+}
+
+.headline {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.detail {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.chart-card {
+  margin-bottom: 1rem;
+  padding: 1rem 0.75rem 0.75rem;
+  background: var(--card);
+  border-radius: 1rem;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.bar {
+  fill: var(--dry);
+}
+
+.bar.light {
+  fill: var(--light);
+}
+
+.bar.moderate {
+  fill: var(--moderate);
+}
+
+.bar.heavy {
+  fill: var(--heavy);
+}
+
+.axis-label {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.baseline {
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 1;
+}
+
+.caption {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.offline {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem;
+  border-left: 4px solid var(--warn);
+  border-radius: 0.5rem;
+  background: var(--card);
+  color: var(--warn);
+  font-size: 0.85rem;
+}
+
+.radar {
+  margin-bottom: 1rem;
+}
+
+.radar h2 {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.map {
+  height: 20rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #0a1626;
+}
+
+/* Assombrit uniquement le fond de carte, pas les couleurs du radar */
+.map-base {
+  filter: invert(1) hue-rotate(180deg) saturate(0.55) brightness(0.9) contrast(0.95);
+}
+
+.map .leaflet-control-attribution {
+  font-size: 0.65rem;
+}
+
+.radar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.radar-play {
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.radar-play:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.radar-slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.radar-time {
+  flex: 0 0 auto;
+  max-width: 11rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.current {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+
+.hourly {
+  margin-bottom: 1rem;
+}
+
+.hourly h2 {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.hours {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0 0 0.5rem;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.hour {
+  flex: 0 0 4.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.5rem 0.25rem;
+  background: var(--card);
+  border-radius: 0.75rem;
+  scroll-snap-align: start;
+  font-variant-numeric: tabular-nums;
+}
+
+.hour-day {
+  min-height: 1rem;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.hour-time {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.hour-icon {
+  font-size: 1.5rem;
+  line-height: 1.6;
+}
+
+.hour-temp {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.hour-prob {
+  min-height: 1rem;
+  color: var(--light);
+  font-size: 0.75rem;
+}
+
+.hour-mm {
+  min-height: 1rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.details {
+  margin-bottom: 1rem;
+  color: var(--muted);
+}
+
+.details summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.where {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.where.warn {
+  color: var(--warn);
+}
+
+.status {
+  color: var(--muted);
+}
+
+.status.error {
+  color: var(--error);
+}
+
+.slots {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.slot {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.6rem 0.9rem;
+  background: var(--card);
+  border-left: 4px solid transparent;
+  border-radius: 0.5rem;
+  color: var(--fg);
+}
+
+.slot.light {
+  border-left-color: var(--light);
+}
+
+.slot.moderate {
+  border-left-color: var(--moderate);
+}
+
+.slot.heavy {
+  border-left-color: var(--heavy);
+}
+
+.slot-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.slot-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.slot-mm {
+  min-width: 4.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.retry {
+  padding: 0.6rem 1.2rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.retry:hover {
+  background: rgba(79, 195, 247, 0.12);
+}
+
+.updated {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.footer {
+  margin-top: 2rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
