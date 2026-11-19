@@ -60,6 +60,11 @@ export interface RadarHandle {
   destroy(): void;
 }
 
+interface RadarView extends RadarHandle {
+  /** À appeler quand la taille du conteneur a changé (ouverture d'une fenêtre, par exemple). */
+  invalidate(): void;
+}
+
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className?: string,
@@ -72,32 +77,49 @@ function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 /**
- * Monte la carte radar dans `container` (déjà présent dans la page).
- * Ne lève jamais d'erreur : en cas de problème, affiche un message dans la carte.
+ * Une carte radar animée dans `container`.
+ * `interactive: false` : aperçu fixe (ni déplacement, ni zoom), sans barre de défilement.
+ * `interactive: true` : carte déplaçable / zoomable avec lecture, pause et barre de défilement.
+ * Ne lève jamais d'erreur : en cas de problème, affiche un message.
  */
-export function mountRadar(container: HTMLElement, position: Position): RadarHandle {
+function createView(
+  container: HTMLElement,
+  position: Position,
+  indexPromise: Promise<RadarIndex>,
+  interactive: boolean,
+): RadarView {
   const mapEl = el('div', 'map');
-  const controls = el('div', 'radar-controls');
+  const label = el('span', interactive ? 'radar-time' : 'radar-badge', 'Chargement du radar…');
   const playBtn = el('button', 'radar-play', '▶');
-  playBtn.type = 'button';
-  playBtn.setAttribute('aria-label', 'Lecture / pause');
   const slider = el('input', 'radar-slider');
-  slider.type = 'range';
-  slider.min = '0';
-  slider.max = '0';
-  slider.value = '0';
-  slider.disabled = true;
-  slider.setAttribute('aria-label', 'Image du radar');
-  const label = el('span', 'radar-time', 'Chargement du radar…');
-  controls.append(playBtn, slider, label);
-  container.append(mapEl, controls);
+  if (interactive) {
+    playBtn.type = 'button';
+    playBtn.setAttribute('aria-label', 'Lecture / pause');
+    slider.type = 'range';
+    slider.min = '0';
+    slider.max = '0';
+    slider.value = '0';
+    slider.disabled = true;
+    slider.setAttribute('aria-label', 'Image du radar');
+    const controls = el('div', 'radar-controls');
+    controls.append(playBtn, slider, label);
+    container.append(mapEl, controls);
+  } else {
+    container.append(mapEl, label);
+  }
 
   const map = L.map(mapEl, {
     center: [position.lat, position.lon],
     zoom: MAP_ZOOM,
     minZoom: 4,
     maxZoom: 10,
-    zoomControl: true,
+    zoomControl: interactive,
+    dragging: interactive,
+    touchZoom: interactive,
+    scrollWheelZoom: interactive,
+    doubleClickZoom: interactive,
+    boxZoom: interactive,
+    keyboard: interactive,
   });
 
   // Fond OpenStreetMap, assombri en CSS (classe map-base) pour s'accorder à l'interface.
@@ -149,13 +171,15 @@ export function mountRadar(container: HTMLElement, position: Position): RadarHan
     schedule();
   }
 
-  playBtn.addEventListener('click', () => setPlaying(!playing));
-  slider.addEventListener('input', () => {
-    setPlaying(false);
-    show(Number(slider.value));
-  });
+  if (interactive) {
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+    slider.addEventListener('input', () => {
+      setPlaying(false);
+      show(Number(slider.value));
+    });
+  }
 
-  fetchRadarIndex()
+  indexPromise
     .then(({ host, frames: list }) => {
       if (destroyed) return;
       frames = list;
@@ -189,10 +213,91 @@ export function mountRadar(container: HTMLElement, position: Position): RadarHan
     });
 
   return {
+    invalidate() {
+      if (!destroyed) map.invalidateSize();
+    },
     destroy() {
       destroyed = true;
       window.clearTimeout(timer);
       map.remove();
+    },
+  };
+}
+
+/**
+ * Monte le radar dans `container` (déjà présent dans la page) : un aperçu fixe et peu haut
+ * (le défilement de la page ne déplace pas la carte). Un clic ouvre une fenêtre avec la carte
+ * interactive et la barre de défilement. Ne lève jamais d'erreur.
+ */
+export function mountRadar(container: HTMLElement, position: Position): RadarHandle {
+  // Les index RainViewer ne sont demandés qu'une fois, pour l'aperçu comme pour la fenêtre.
+  const indexPromise = fetchRadarIndex();
+  indexPromise.catch(() => undefined);
+
+  const preview = el('div', 'radar-preview');
+  const previewView = createView(preview, position, indexPromise, false);
+  const openBtn = el('button', 'radar-open');
+  openBtn.type = 'button';
+  openBtn.setAttribute('aria-label', 'Ouvrir le radar en grand');
+  openBtn.append(el('span', 'radar-open-hint', '⤢ Agrandir'));
+  preview.append(openBtn);
+  container.append(preview);
+
+  let modal: { dialog: HTMLDialogElement; view: RadarView } | undefined;
+
+  function closeModal(): void {
+    if (!modal) return;
+    const { dialog, view } = modal;
+    modal = undefined;
+    view.destroy();
+    if (dialog.open) {
+      if (typeof dialog.close === 'function') dialog.close();
+      else dialog.removeAttribute('open');
+    }
+    dialog.remove();
+    document.documentElement.classList.remove('modal-open');
+  }
+
+  function openModal(): void {
+    if (modal) return;
+    const dialog = el('dialog', 'radar-dialog');
+    dialog.setAttribute('aria-label', 'Radar de précipitations');
+    const bar = el('div', 'radar-dialog-bar');
+    const close = el('button', 'radar-close', '✕');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Fermer le radar');
+    bar.append(el('h2', undefined, 'Radar : les 2 dernières heures'), close);
+    const body = el('div', 'radar-dialog-body');
+    dialog.append(bar, body);
+    document.body.append(dialog);
+    document.documentElement.classList.add('modal-open');
+
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+
+    const view = createView(body, position, indexPromise, true);
+    modal = { dialog, view };
+    // Une fois la fenêtre affichée, Leaflet doit recalculer la taille de sa carte.
+    window.requestAnimationFrame(() => view.invalidate());
+
+    close.addEventListener('click', () => {
+      closeModal();
+      openBtn.focus();
+    });
+    // « Échap » ferme la fenêtre nativement : on nettoie ensuite la carte.
+    dialog.addEventListener('close', () => closeModal());
+    // Un clic sur le fond (hors de la fenêtre, sur grand écran) ferme aussi.
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) closeModal();
+    });
+  }
+
+  openBtn.addEventListener('click', openModal);
+
+  return {
+    destroy() {
+      closeModal();
+      previewView.destroy();
     },
   };
 }

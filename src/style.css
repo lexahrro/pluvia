@@ -301,6 +301,125 @@ h1 {
   background: #0a1626;
 }
 
+/* Aperçu : carte fixe et peu haute, le défilement de la page ne la déplace pas */
+.radar-preview {
+  position: relative;
+}
+
+.radar-preview .map {
+  height: 9.5rem;
+}
+
+/* Calque cliquable au-dessus de la carte, sous les contrôles Leaflet (z-index 1000) */
+.radar-open {
+  position: absolute;
+  inset: 0;
+  z-index: 800;
+  border: 0;
+  border-radius: 1rem;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.radar-open-hint {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 0.6rem;
+  background: rgba(11, 29, 51, 0.75);
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.radar-badge {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 900;
+  max-width: calc(100% - 1rem);
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.6rem;
+  background: rgba(11, 29, 51, 0.75);
+  color: #fff;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* Fenêtre du radar interactif */
+.radar-dialog {
+  width: min(100vw, 64rem);
+  max-width: 100vw;
+  height: min(100dvh, 50rem);
+  max-height: 100dvh;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-bottom);
+  color: var(--fg);
+  overflow: hidden;
+}
+
+.radar-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.radar-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+@media (min-width: 700px) {
+  .radar-dialog {
+    border-radius: 1rem;
+  }
+}
+
+.radar-dialog-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+}
+
+.radar-dialog-bar h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.radar-close {
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.radar-dialog-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+.radar-dialog .map {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+html.modal-open {
+  overflow: hidden;
+}
+
 /* Assombrit uniquement le fond de carte, pas les couleurs du radar */
 .map-base {
   filter: invert(1) hue-rotate(180deg) saturate(0.55) brightness(0.9) contrast(0.95);
