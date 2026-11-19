@@ -1,3 +1,4 @@
+import { formatTime } from './time.ts';
 import { RAIN_LABELS, rainLevel } from './weather.ts';
 import type { RainSlot } from './weather.ts';
 
@@ -12,7 +13,6 @@ const MAX_MM_PER_HOUR = 10;
 const MIN_RAIN_BAR = 8;
 const DRY_STUB = 3;
 
-const timeFormat = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
 function svgEl<K extends keyof SVGElementTagNameMap>(
   tag: K,
@@ -57,7 +57,7 @@ export function renderChart(slots: RainSlot[]): SVGSVGElement {
       class: `bar ${level}`,
     });
     const title = svgEl('title');
-    title.textContent = `${timeFormat.format(slot.start)} – ${timeFormat.format(slot.end)} : ${RAIN_LABELS[level]} (${slot.mm.toFixed(2)} mm)`;
+    title.textContent = `${formatTime(slot.start)} – ${formatTime(slot.end)} : ${RAIN_LABELS[level]} (${slot.mm.toFixed(2)} mm)`;
     rect.append(title);
     svg.append(rect);
 
@@ -68,7 +68,7 @@ export function renderChart(slots: RainSlot[]): SVGSVGElement {
         'text-anchor': 'middle',
         class: 'axis-label',
       });
-      label.textContent = i === 0 ? 'Maint.' : timeFormat.format(slot.start);
+      label.textContent = i === 0 ? 'Maint.' : formatTime(slot.start);
       svg.append(label);
     }
   });

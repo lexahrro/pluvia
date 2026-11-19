@@ -1,10 +1,17 @@
 export interface Position {
   lat: number;
   lon: number;
-  /** 'gps' = position de l'appareil, 'default' = position de secours (Paris) */
-  source: 'gps' | 'default';
+  /** 'gps' = appareil, 'place' = ville choisie, 'default' = position de secours (Paris) */
+  source: 'gps' | 'place' | 'default';
   /** Raison du repli sur la position par défaut (si source === 'default') */
   reason?: string;
+  /** Nom du lieu (si source === 'place') */
+  name?: string;
+}
+
+/** Position correspondant à une ville choisie dans la recherche. */
+export function positionFromPlace(place: { name: string; lat: number; lon: number }): Position {
+  return { lat: place.lat, lon: place.lon, source: 'place', name: place.name };
 }
 
 const DEFAULT_POSITION = { lat: 48.8566, lon: 2.3522 }; // Paris

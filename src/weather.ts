@@ -30,6 +30,8 @@ export interface Forecast {
   rainSlots: RainSlot[];
   hours: HourForecast[];
   current: CurrentConditions | null;
+  /** Fuseau IANA du lieu (ex. « Europe/Paris »), fourni par Open-Meteo */
+  timezone: string | undefined;
 }
 
 export type RainLevel = 'none' | 'light' | 'moderate' | 'heavy';
@@ -37,6 +39,7 @@ export type RainLevel = 'none' | 'light' | 'moderate' | 'heavy';
 type Nums = (number | null)[];
 
 interface OpenMeteoResponse {
+  timezone?: string;
   current?: {
     temperature_2m: number | null;
     weather_code: number | null;
@@ -161,6 +164,7 @@ export async function fetchForecast(
     rainSlots: parseForecast(json),
     hours: parseHours(json),
     current: parseCurrent(json),
+    timezone: typeof json.timezone === 'string' ? json.timezone : undefined,
   };
 }
 

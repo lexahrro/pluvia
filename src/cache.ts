@@ -1,14 +1,19 @@
 import type { Position } from './location.ts';
 import type { CurrentConditions, Forecast, HourForecast, RainSlot } from './weather.ts';
 
-const KEY = 'pluvia:last-forecast:v1';
+const KEY = 'pluvia:forecasts:v3';
+/** Nombre maximum de lieux dont on garde la dernière prévision. */
+const MAX_ENTRIES = 6;
 const HOUR_MS = 60 * 60 * 1000;
 /** Au-delà, les données mémorisées sont trop anciennes pour être affichées. */
 const MAX_AGE_MS = 12 * HOUR_MS;
 
 interface StoredForecast {
+  /** Lieu auquel appartient la prévision (« gps » ou « place:<id> ») */
+  key: string;
   savedAt: number;
   position: Position;
+  timezone: string | undefined;
   rainSlots: { start: number; end: number; mm: number }[];
   hours: (Omit<HourForecast, 'time'> & { time: number })[];
   current: CurrentConditions | null;
@@ -21,30 +26,54 @@ export interface CachedForecast {
 }
 
 /** Mémorise la dernière prévision pour l'afficher hors ligne. Ne lève jamais d'erreur. */
-export function saveForecast(position: Position, forecast: Forecast, now: Date = new Date()): void {
+export function saveForecast(
+  key: string,
+  position: Position,
+  forecast: Forecast,
+  now: Date = new Date(),
+): void {
   const stored: StoredForecast = {
+    key,
     savedAt: now.getTime(),
     position,
+    timezone: forecast.timezone,
     rainSlots: forecast.rainSlots.map((s) => ({ start: s.start.getTime(), end: s.end.getTime(), mm: s.mm })),
     hours: forecast.hours.map((h) => ({ ...h, time: h.time.getTime() })),
     current: forecast.current,
   };
   try {
-    localStorage.setItem(KEY, JSON.stringify(stored));
+    const all = readAll();
+    all[key] = stored;
+    // On ne garde que les lieux les plus récemment consultés.
+    const kept = Object.entries(all)
+      .sort(([, a], [, b]) => b.savedAt - a.savedAt)
+      .slice(0, MAX_ENTRIES);
+    localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(kept)));
   } catch {
     // stockage plein ou indisponible (navigation privée) : on s'en passe
   }
 }
 
-/**
- * Relit la dernière prévision mémorisée, en retirant ce qui est déjà passé.
- * Renvoie null s'il n'y a rien, si c'est trop ancien ou si les données sont illisibles.
- */
-export function loadForecast(now: Date = new Date()): CachedForecast | null {
+function readAll(): Record<string, StoredForecast> {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    const stored = JSON.parse(raw) as StoredForecast;
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, StoredForecast>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Relit la dernière prévision mémorisée POUR CE LIEU, en retirant ce qui est déjà passé.
+ * Renvoie null s'il n'y a rien pour ce lieu, si c'est trop ancien ou si les données sont illisibles.
+ */
+export function loadForecast(key: string, now: Date = new Date()): CachedForecast | null {
+  try {
+    const stored = readAll()[key];
+    if (!stored || stored.key !== key) return null;
     if (now.getTime() - stored.savedAt > MAX_AGE_MS) return null;
 
     const rainSlots: RainSlot[] = stored.rainSlots
@@ -58,7 +87,7 @@ export function loadForecast(now: Date = new Date()): CachedForecast | null {
     return {
       savedAt: new Date(stored.savedAt),
       position: stored.position,
-      forecast: { rainSlots, hours, current: stored.current },
+      forecast: { rainSlots, hours, current: stored.current, timezone: stored.timezone },
     };
   } catch {
     return null;

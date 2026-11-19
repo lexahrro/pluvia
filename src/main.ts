@@ -1,5 +1,5 @@
 import './style.css';
-import { getPosition } from './location.ts';
+import { getPosition, positionFromPlace } from './location.ts';
 import type { Position } from './location.ts';
 import { fetchForecast, rainLevel, RAIN_LABELS } from './weather.ts';
 import type { Forecast, RainSlot } from './weather.ts';
@@ -10,13 +10,20 @@ import { HORIZON_SLOTS, summarize } from './summary.ts';
 import { mountRadar } from './radar.ts';
 import type { RadarHandle } from './radar.ts';
 import { loadForecast, saveForecast } from './cache.ts';
+import { loadSelection, saveSelection, selectionKey } from './places.ts';
+import type { Selection } from './places.ts';
+import { createTopBar } from './picker.ts';
+import type { TopBar } from './picker.ts';
+import { formatDeviceTime, formatTime, setDisplayTimeZone } from './time.ts';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
 /** Carte radar en cours : à détruire avant chaque rechargement pour libérer la carte. */
 let radar: RadarHandle | undefined;
-
-const timeFormat = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
+/** Lieu consulté : la position de l'appareil ou une ville choisie. */
+let selection: Selection = loadSelection();
+/** Numéro du chargement en cours : un chargement plus ancien ne doit plus rien afficher. */
+let loadToken = 0;
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -33,20 +40,30 @@ function setMood(mood: string): void {
   document.documentElement.dataset.mood = mood;
 }
 
-function renderShell(): HTMLElement {
+function selectionLabel(current: Selection, position?: Position): string {
+  if (current.kind === 'place') return current.place.name;
+  return position?.source === 'default' ? 'Paris (par défaut)' : 'Ma position';
+}
+
+function choose(next: Selection): void {
+  selection = next;
+  saveSelection(next);
+  window.scrollTo(0, 0);
+  void load();
+}
+
+function renderShell(): { content: HTMLElement; topBar: TopBar } {
   app.replaceChildren();
   const main = el('main', 'screen');
   const content = el('div', 'content');
-  main.append(el('h1', undefined, 'Pluvia'), content, el('footer', 'footer', 'Données météo : Open-Meteo.com (CC BY 4.0)'));
+  const topBar = createTopBar(selection, selectionLabel(selection), choose);
+  main.append(
+    topBar.element,
+    content,
+    el('footer', 'footer', 'Météo et lieux : Open-Meteo.com (CC BY 4.0)'),
+  );
   app.append(main);
-  return content;
-}
-
-function positionText(position: Position): string {
-  const where = `${position.lat.toFixed(3)}, ${position.lon.toFixed(3)}`;
-  return position.source === 'gps'
-    ? `Ma position : ${where}`
-    : `${position.reason ?? ''} Position par défaut : Paris (${where}).`;
+  return { content, topBar };
 }
 
 function renderDetails(slots: RainSlot[]): HTMLElement {
@@ -57,7 +74,7 @@ function renderDetails(slots: RainSlot[]): HTMLElement {
     const level = rainLevel(slot.mm);
     const li = el('li', `slot ${level}`);
     li.append(
-      el('span', 'slot-time', `${timeFormat.format(slot.start)} – ${timeFormat.format(slot.end)}`),
+      el('span', 'slot-time', `${formatTime(slot.start)} – ${formatTime(slot.end)}`),
       el('span', 'slot-label', RAIN_LABELS[level]),
       el('span', 'slot-mm', `${slot.mm.toFixed(2)} mm`),
     );
@@ -73,12 +90,15 @@ function renderForecast(
   forecast: Forecast,
   offlineSince?: Date,
 ): void {
+  // Toutes les heures affichées sont celles du lieu, pas celles de l'appareil.
+  setDisplayTimeZone(forecast.timezone);
+
   if (offlineSince) {
     content.append(
       el(
         'p',
         'offline',
-        `Hors ligne : dernières données reçues à ${timeFormat.format(offlineSince)}. Elles peuvent ne plus être à jour.`,
+        `Hors ligne : dernières données reçues à ${formatDeviceTime(offlineSince)}. Elles peuvent ne plus être à jour.`,
       ),
     );
   }
@@ -106,43 +126,52 @@ function renderForecast(
   const radarSection = el('section', 'radar');
   radarSection.append(el('h2', undefined, 'Radar : les 2 dernières heures'));
 
-  content.append(
-    hero,
-    chartCard,
-    radarSection,
-    hourlySection,
-    renderDetails(slots),
-    el('p', `where${position.source === 'default' ? ' warn' : ''}`, positionText(position)),
-  );
+  content.append(hero, chartCard, radarSection, hourlySection, renderDetails(slots));
+  if (position.source === 'default') {
+    content.append(
+      el('p', 'where warn', `${position.reason ?? ''} Position par défaut : Paris. Choisis une ville pour changer.`),
+    );
+  }
 
   // La carte a besoin que son conteneur soit déjà dans la page.
   radar = mountRadar(radarSection, position);
 }
 
 async function load(): Promise<void> {
+  const token = ++loadToken;
   radar?.destroy();
   radar = undefined;
-  const content = renderShell();
+  const { content, topBar } = renderShell();
   setMood('none');
-  content.append(el('p', 'status', 'Localisation en cours…'));
 
-  const position = await getPosition();
+  const key = selectionKey(selection);
+  let position: Position;
+  if (selection.kind === 'place') {
+    position = positionFromPlace(selection.place);
+  } else {
+    content.append(el('p', 'status', 'Localisation en cours…'));
+    position = await getPosition();
+    if (token !== loadToken) return;
+    topBar.setLabel(selectionLabel(selection, position));
+  }
   content.replaceChildren(el('p', 'status', 'Chargement des prévisions…'));
 
   let updatedAt: Date | undefined;
   try {
     const forecast = await fetchForecast(position.lat, position.lon);
+    if (token !== loadToken) return;
     content.replaceChildren();
     if (forecast.rainSlots.length === 0) {
       content.append(el('p', 'status', 'Aucune donnée disponible pour le moment.'));
     } else {
-      saveForecast(position, forecast);
+      saveForecast(key, position, forecast);
       renderForecast(content, position, forecast);
       updatedAt = new Date();
     }
   } catch (err) {
-    // Pas de réseau ou service indisponible : on affiche la dernière prévision mémorisée si on en a une.
-    const cached = loadForecast();
+    if (token !== loadToken) return;
+    // Pas de réseau ou service indisponible : on affiche la dernière prévision de CE lieu si on en a une.
+    const cached = loadForecast(key);
     if (cached) {
       content.replaceChildren();
       renderForecast(content, cached.position, cached.forecast, cached.savedAt);
@@ -164,7 +193,7 @@ async function load(): Promise<void> {
   retry.addEventListener('click', () => void load());
   content.append(
     retry,
-    el('p', 'updated', updatedAt ? `Données de ${timeFormat.format(updatedAt)}` : ''),
+    el('p', 'updated', updatedAt ? `Données de ${formatDeviceTime(updatedAt)}` : ''),
   );
 }
 

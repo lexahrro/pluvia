@@ -1,3 +1,4 @@
+import { formatTime } from './time.ts';
 import { RAIN_LABELS, rainLevel } from './weather.ts';
 import type { RainLevel, RainSlot } from './weather.ts';
 
@@ -12,7 +13,6 @@ export interface RainSummary {
 }
 
 const LEVEL_ORDER: RainLevel[] = ['none', 'light', 'moderate', 'heavy'];
-const timeFormat = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
 export function formatDelay(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
@@ -45,7 +45,7 @@ export function summarize(allSlots: RainSlot[], now: Date = new Date()): RainSum
       detail:
         stopIndex === -1
           ? `La pluie continue sur les ${horizonText}.`
-          : `Fin prévue vers ${timeFormat.format(slots[stopIndex].start)}.`,
+          : `Fin prévue vers ${formatTime(slots[stopIndex].start)}.`,
       mood,
     };
   }
@@ -59,7 +59,7 @@ export function summarize(allSlots: RainSlot[], now: Date = new Date()): RainSum
   const minutes = Math.max(1, Math.round((start.getTime() - now.getTime()) / 60_000));
   return {
     headline: `${RAIN_LABELS[levels[rainIndex]]} dans ${formatDelay(minutes)}`,
-    detail: `À partir de ${timeFormat.format(start)}.`,
+    detail: `À partir de ${formatTime(start)}.`,
     mood,
   };
 }

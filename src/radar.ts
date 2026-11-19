@@ -1,6 +1,7 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Position } from './location.ts';
+import { formatTime } from './time.ts';
 
 /** Image radar : horodatage (secondes UNIX) et chemin fournis par RainViewer. */
 export interface RadarFrame {
@@ -28,7 +29,6 @@ const RADAR_OPACITY = 0.75;
 const RADAR_COLOR = 2; // schéma « Universal Blue »
 const RADAR_OPTIONS = '1_0'; // lissé, sans couleurs neige
 
-const timeFormat = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
 export function parseRadarIndex(json: RainViewerResponse): RadarIndex {
   const past = json.radar?.past;
@@ -53,7 +53,7 @@ export function frameLabel(frame: RadarFrame, now: Date = new Date()): string {
   const at = new Date(frame.time * 1000);
   const minutesAgo = Math.max(0, Math.round((now.getTime() - at.getTime()) / 60_000));
   const ago = minutesAgo < 2 ? 'à l’instant' : `il y a ${minutesAgo} min`;
-  return `${timeFormat.format(at)} · ${ago}`;
+  return `${formatTime(at)} · ${ago}`;
 }
 
 export interface RadarHandle {
