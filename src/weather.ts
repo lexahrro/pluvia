@@ -18,6 +18,10 @@ export interface HourForecast {
   /** Code météo WMO */
   weatherCode: number;
   isDay: boolean;
+  /** Vent moyen à 10 m en km/h, direction d'où il vient en degrés, indice UV (null si absent) */
+  windSpeed: number | null;
+  windDirection: number | null;
+  uvIndex: number | null;
 }
 
 export interface CurrentConditions {
@@ -72,6 +76,9 @@ interface OpenMeteoResponse {
     precipitation: Nums;
     weather_code: Nums;
     is_day: Nums;
+    wind_speed_10m?: Nums;
+    wind_direction_10m?: Nums;
+    uv_index?: Nums;
   };
   minutely_15?: {
     time: number[];
@@ -91,7 +98,7 @@ export function buildUrl(lat: number, lon: number): string {
     latitude: lat.toFixed(4),
     longitude: lon.toFixed(4),
     minutely_15: 'precipitation',
-    hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day',
+    hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day,wind_speed_10m,wind_direction_10m,uv_index',
     current:
       'temperature_2m,weather_code,is_day,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index',
     daily: 'uv_index_max',
@@ -157,6 +164,9 @@ export function parseHours(
       precipitation: nextPrecip ?? 0,
       weatherCode,
       isDay: (data.is_day?.[i] ?? 1) === 1,
+      windSpeed: data.wind_speed_10m?.[i] ?? null,
+      windDirection: data.wind_direction_10m?.[i] ?? null,
+      uvIndex: data.uv_index?.[i] ?? null,
     });
   }
   return hours;

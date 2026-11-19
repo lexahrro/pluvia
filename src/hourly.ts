@@ -1,4 +1,5 @@
 import { describeWeather } from './conditions.ts';
+import { compassLabel, uvCategory } from './metrics.ts';
 import { dayDifference, formatTime, formatWeekday, localHour } from './time.ts';
 import type { HourForecast } from './weather.ts';
 
@@ -38,6 +39,22 @@ export function renderHourly(hours: HourForecast[], now: Date = new Date()): HTM
         : '';
     const amount = hour.precipitation >= 0.1 ? `${hour.precipitation.toFixed(1)} mm` : '';
 
+    const wind = el('span', 'hour-wind');
+    if (hour.windSpeed !== null) {
+      wind.textContent = `${Math.round(hour.windSpeed)}`;
+      if (hour.windDirection !== null) {
+        const arrow = el('span', 'wind-arrow', '↑');
+        arrow.style.transform = `rotate(${Math.round(hour.windDirection + 180)}deg)`;
+        arrow.setAttribute('aria-hidden', 'true');
+        wind.prepend(arrow, ' ');
+        wind.title = `Vent ${Math.round(hour.windSpeed)} km/h depuis ${compassLabel(hour.windDirection)}`;
+      }
+    }
+
+    // L'UV n'a de sens que de jour : on masque les valeurs qui arrondissent à 0.
+    const uvValue = hour.uvIndex !== null ? Math.round(hour.uvIndex) : 0;
+    const uv = el('span', uvValue >= 1 ? `hour-uv uv-${uvCategory(hour.uvIndex ?? 0)}` : 'hour-uv', uvValue >= 1 ? `UV ${uvValue}` : '');
+
     card.append(
       el('span', 'hour-day', isNewDay ? dayLabel(hour.time, now) : ''),
       el('span', 'hour-time', i === 0 ? 'Maint.' : formatTime(hour.time)),
@@ -45,6 +62,8 @@ export function renderHourly(hours: HourForecast[], now: Date = new Date()): HTM
       el('span', 'hour-temp', `${Math.round(hour.temperature)}°`),
       el('span', 'hour-prob', probability),
       el('span', 'hour-mm', amount),
+      wind,
+      uv,
     );
     strip.append(card);
   });

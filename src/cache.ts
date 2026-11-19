@@ -83,7 +83,14 @@ export function loadForecast(key: string, now: Date = new Date()): CachedForecas
       .map((s) => ({ start: new Date(s.start), end: new Date(s.end), mm: s.mm }));
     const hours: HourForecast[] = stored.hours
       .filter((h) => h.time + HOUR_MS > now.getTime())
-      .map((h) => ({ ...h, time: new Date(h.time) }));
+      // Les anciennes entrées n'ont pas vent / UV par heure.
+      .map((h) => ({
+        ...h,
+        time: new Date(h.time),
+        windSpeed: h.windSpeed ?? null,
+        windDirection: h.windDirection ?? null,
+        uvIndex: h.uvIndex ?? null,
+      }));
     if (rainSlots.length === 0) return null;
 
     return {

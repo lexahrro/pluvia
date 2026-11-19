@@ -582,3 +582,25 @@ h1 {
 .uv-high { border-left-color: #fb923c; }
 .uv-very-high { border-left-color: #f87171; }
 .uv-extreme { border-left-color: #c084fc; }
+
+.hour-wind {
+  min-height: 1rem;
+  margin-top: 0.2rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.hour-wind .wind-arrow {
+  font-size: 0.8rem;
+}
+
+.hour-uv {
+  min-height: 1rem;
+  padding: 0 0.3rem;
+  border-left: 3px solid transparent;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
