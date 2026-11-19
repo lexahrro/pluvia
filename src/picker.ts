@@ -48,10 +48,10 @@ export function createTopBar(
   toggle.setAttribute('aria-controls', 'picker');
   // Icône selon le choix : flèche pour « ma position », barres pour une ville de la liste.
   toggle.append(icon(selection.kind === 'gps' ? 'location-arrow' : 'bars', 'place-icon'), labelEl, icon('chevron-down', 'caret'));
-  // Logo (le même fichier que l'icône de l'application) devant le nom, en blanc.
+  // Logo de l’application (icône PWA) devant le nom, en blanc.
   const title = el('h1', 'brand');
   const logo = el('img', 'brand-logo');
-  logo.src = `${import.meta.env.BASE_URL}favicon.svg`;
+  logo.src = `${import.meta.env.BASE_URL}pwa-192.png`;
   logo.alt = '';
   logo.width = 32;
   logo.height = 32;
