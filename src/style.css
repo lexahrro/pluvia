@@ -873,3 +873,66 @@ html.modal-open {
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+.alerts {
+  margin: 1rem 0;
+}
+
+.alerts h2 {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.alerts-card {
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.alerts-card p {
+  margin: 0 0 0.5rem;
+}
+
+.alerts-sub,
+.alerts-message {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.alerts-message {
+  margin: 0.6rem 0 0;
+}
+
+.alerts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.alert-btn {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: #06233a;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.alert-btn.secondary {
+  background: transparent;
+  color: var(--fg);
+  border-color: rgba(255, 255, 255, 0.3);
+  font-weight: 400;
+}
+
+.alert-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

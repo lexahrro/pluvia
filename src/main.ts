@@ -14,6 +14,7 @@ import { loadSelection, saveSelection, selectionKey } from './places.ts';
 import type { Selection } from './places.ts';
 import { createTopBar } from './picker.ts';
 import type { TopBar } from './picker.ts';
+import { renderAlerts } from './alerts-ui.ts';
 import { renderConditions } from './metrics.ts';
 import { renderSun } from './sun.ts';
 import { formatDeviceTime, formatTime, setDisplayTimeZone } from './time.ts';
@@ -136,6 +137,14 @@ function renderForecast(
   const sun = renderSun(forecast.sun);
   if (sun) content.append(sun);
   content.append(renderDetails(slots));
+  content.append(
+    renderAlerts({
+      lat: position.lat,
+      lon: position.lon,
+      name: selectionLabel(selection, position),
+      timezone: forecast.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
+  );
   if (position.source === 'default') {
     content.append(
       el('p', 'where warn', `${position.reason ?? ''} Position par défaut : Paris. Choisis une ville pour changer.`),

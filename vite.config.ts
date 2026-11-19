@@ -29,6 +29,8 @@ export default defineConfig({
         // L'application elle-même (HTML, JS, CSS, icônes) est mise en cache pour fonctionner hors ligne.
         // Les données météo ne passent pas par le service worker : l'app garde elle-même la dernière réponse.
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // Gestion des notifications push (alertes de pluie), dans public/push-sw.js.
+        importScripts: ['push-sw.js'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
       },
