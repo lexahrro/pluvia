@@ -14,6 +14,7 @@ import { loadSelection, saveSelection, selectionKey } from './places.ts';
 import type { Selection } from './places.ts';
 import { createTopBar } from './picker.ts';
 import type { TopBar } from './picker.ts';
+import { renderConditions } from './metrics.ts';
 import { formatDeviceTime, formatTime, setDisplayTimeZone } from './time.ts';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -126,7 +127,10 @@ function renderForecast(
   const radarSection = el('section', 'radar');
   radarSection.append(el('h2', undefined, 'Radar : les 2 dernières heures'));
 
-  content.append(hero, chartCard, radarSection, hourlySection, renderDetails(slots));
+  content.append(hero, chartCard);
+  const conditions = renderConditions(forecast.current, forecast.uvMaxToday);
+  if (conditions) content.append(conditions);
+  content.append(radarSection, hourlySection, renderDetails(slots));
   if (position.source === 'default') {
     content.append(
       el('p', 'where warn', `${position.reason ?? ''} Position par défaut : Paris. Choisis une ville pour changer.`),

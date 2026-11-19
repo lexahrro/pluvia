@@ -14,6 +14,7 @@ interface StoredForecast {
   savedAt: number;
   position: Position;
   timezone: string | undefined;
+  uvMaxToday?: number | null;
   rainSlots: { start: number; end: number; mm: number }[];
   hours: (Omit<HourForecast, 'time'> & { time: number })[];
   current: CurrentConditions | null;
@@ -37,6 +38,7 @@ export function saveForecast(
     savedAt: now.getTime(),
     position,
     timezone: forecast.timezone,
+    uvMaxToday: forecast.uvMaxToday,
     rainSlots: forecast.rainSlots.map((s) => ({ start: s.start.getTime(), end: s.end.getTime(), mm: s.mm })),
     hours: forecast.hours.map((h) => ({ ...h, time: h.time.getTime() })),
     current: forecast.current,
@@ -87,7 +89,14 @@ export function loadForecast(key: string, now: Date = new Date()): CachedForecas
     return {
       savedAt: new Date(stored.savedAt),
       position: stored.position,
-      forecast: { rainSlots, hours, current: stored.current, timezone: stored.timezone },
+      // Les entrées enregistrées avant l'ajout du vent / de l'humidité / de l'UV n'ont pas ces champs.
+      forecast: {
+        rainSlots,
+        hours,
+        current: stored.current,
+        timezone: stored.timezone,
+        uvMaxToday: stored.uvMaxToday ?? null,
+      },
     };
   } catch {
     return null;

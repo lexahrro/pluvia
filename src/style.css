@@ -526,3 +526,59 @@ h1 {
   font-size: 0.75rem;
   text-align: center;
 }
+
+.conditions {
+  margin-bottom: 1rem;
+}
+
+.conditions h2 {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.6rem;
+}
+
+.metric {
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-left: 4px solid transparent;
+}
+
+.metric p {
+  margin: 0;
+}
+
+.metric-title {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.metric-value {
+  margin: 0.15rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.metric-sub {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.wind-arrow {
+  display: inline-block;
+  font-size: 1.2rem;
+  vertical-align: middle;
+}
+
+.uv-low { border-left-color: #4ade80; }
+.uv-moderate { border-left-color: #facc15; }
+.uv-high { border-left-color: #fb923c; }
+.uv-very-high { border-left-color: #f87171; }
+.uv-extreme { border-left-color: #c084fc; }

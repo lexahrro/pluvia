@@ -24,6 +24,16 @@ export interface CurrentConditions {
   temperature: number;
   weatherCode: number;
   isDay: boolean;
+  /** Humidité relative en % */
+  humidity: number | null;
+  /** Vitesse du vent à 10 m en km/h */
+  windSpeed: number | null;
+  /** Rafales à 10 m en km/h */
+  windGusts: number | null;
+  /** Direction d'où vient le vent, en degrés (0 = nord, 90 = est) */
+  windDirection: number | null;
+  /** Indice UV actuel */
+  uvIndex: number | null;
 }
 
 export interface Forecast {
@@ -32,6 +42,8 @@ export interface Forecast {
   current: CurrentConditions | null;
   /** Fuseau IANA du lieu (ex. « Europe/Paris »), fourni par Open-Meteo */
   timezone: string | undefined;
+  /** Indice UV maximal prévu aujourd'hui (jour du lieu) */
+  uvMaxToday: number | null;
 }
 
 export type RainLevel = 'none' | 'light' | 'moderate' | 'heavy';
@@ -44,6 +56,14 @@ interface OpenMeteoResponse {
     temperature_2m: number | null;
     weather_code: number | null;
     is_day: number | null;
+    relative_humidity_2m?: number | null;
+    wind_speed_10m?: number | null;
+    wind_gusts_10m?: number | null;
+    wind_direction_10m?: number | null;
+    uv_index?: number | null;
+  };
+  daily?: {
+    uv_index_max?: Nums;
   };
   hourly?: {
     time: number[];
@@ -72,7 +92,9 @@ export function buildUrl(lat: number, lon: number): string {
     longitude: lon.toFixed(4),
     minutely_15: 'precipitation',
     hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day',
-    current: 'temperature_2m,weather_code,is_day',
+    current:
+      'temperature_2m,weather_code,is_day,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index',
+    daily: 'uv_index_max',
     forecast_days: '3', // assez pour couvrir 48 h à partir de maintenant
     timeformat: 'unixtime', // horodatages UTC, convertis ensuite dans le fuseau local
     timezone: 'auto',
@@ -147,7 +169,17 @@ export function parseCurrent(json: OpenMeteoResponse): CurrentConditions | null 
     temperature: c.temperature_2m,
     weatherCode: c.weather_code,
     isDay: c.is_day !== 0,
+    humidity: c.relative_humidity_2m ?? null,
+    windSpeed: c.wind_speed_10m ?? null,
+    windGusts: c.wind_gusts_10m ?? null,
+    windDirection: c.wind_direction_10m ?? null,
+    uvIndex: c.uv_index ?? null,
   };
+}
+
+/** Indice UV maximal du premier jour des prévisions (aujourd'hui, jour du lieu). */
+export function parseUvMax(json: OpenMeteoResponse): number | null {
+  return json.daily?.uv_index_max?.[0] ?? null;
 }
 
 export async function fetchForecast(
@@ -165,6 +197,7 @@ export async function fetchForecast(
     hours: parseHours(json),
     current: parseCurrent(json),
     timezone: typeof json.timezone === 'string' ? json.timezone : undefined,
+    uvMaxToday: parseUvMax(json),
   };
 }
 
