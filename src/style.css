@@ -607,3 +607,88 @@ h1 {
   color: var(--muted);
   font-size: 0.7rem;
 }
+
+.aq-good { border-left-color: #2dd4bf; }
+.aq-fair { border-left-color: #4ade80; }
+.aq-moderate { border-left-color: #facc15; }
+.aq-poor { border-left-color: #fb923c; }
+.aq-very-poor { border-left-color: #f87171; }
+.aq-extreme { border-left-color: #c084fc; }
+
+.sun {
+  margin-bottom: 1rem;
+}
+
+.sun h2 {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.sun-card {
+  padding: 0.8rem;
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sun-arc {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  margin: 0 auto;
+}
+
+.sun-horizon {
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 1;
+}
+
+.sun-path {
+  fill: none;
+  stroke: #facc15;
+  stroke-width: 2;
+  stroke-dasharray: 4 5;
+  opacity: 0.7;
+}
+
+.sun-dot {
+  fill: #facc15;
+  stroke: rgba(250, 204, 21, 0.35);
+  stroke-width: 6;
+}
+
+.sun-dot.sun-night {
+  fill: #0b1d33;
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-width: 2;
+}
+
+.sun-headline {
+  margin: 0.5rem 0 0.7rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.sun-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.sun-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.sun-stat-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.sun-stat-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

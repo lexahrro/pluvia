@@ -1,3 +1,7 @@
+import { fetchAirQuality } from './air.ts';
+import type { AirQuality } from './air.ts';
+import type { SunTimes } from './sun.ts';
+
 /** Un créneau de 15 minutes avec la quantité de pluie prévue. */
 export interface RainSlot {
   start: Date;
@@ -52,6 +56,10 @@ export interface Forecast {
   uvMaxToday: number | null;
   /** Cumul de pluie de la journée en cours (de minuit à minuit, heure du lieu), en mm */
   rainTodayMm: number | null;
+  /** Lever / coucher du soleil (null si le soleil ne se lève ou ne se couche pas ce jour-là) */
+  sun: SunTimes | null;
+  /** Qualité de l'air (null si indisponible) */
+  air: AirQuality | null;
 }
 
 export type RainLevel = 'none' | 'light' | 'moderate' | 'heavy';
@@ -74,6 +82,8 @@ interface OpenMeteoResponse {
   daily?: {
     uv_index_max?: Nums;
     precipitation_sum?: Nums;
+    sunrise?: Nums;
+    sunset?: Nums;
   };
   hourly?: {
     time: number[];
@@ -107,7 +117,7 @@ export function buildUrl(lat: number, lon: number): string {
     hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day,wind_speed_10m,wind_direction_10m,uv_index',
     current:
       'temperature_2m,weather_code,is_day,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index',
-    daily: 'uv_index_max,precipitation_sum',
+    daily: 'uv_index_max,precipitation_sum,sunrise,sunset',
     forecast_days: '3', // assez pour couvrir 48 h à partir de maintenant
     timeformat: 'unixtime', // horodatages UTC, convertis ensuite dans le fuseau local
     timezone: 'auto',
@@ -199,6 +209,21 @@ export function parseRainToday(json: OpenMeteoResponse): number | null {
   return json.daily?.precipitation_sum?.[0] ?? null;
 }
 
+/** Lever et coucher du premier jour, et lever du lendemain. */
+export function parseSun(json: OpenMeteoResponse): SunTimes | null {
+  const rise = json.daily?.sunrise;
+  const set = json.daily?.sunset;
+  const r0 = rise?.[0];
+  const s0 = set?.[0];
+  if (r0 === null || r0 === undefined || s0 === null || s0 === undefined) return null;
+  const r1 = rise?.[1];
+  return {
+    sunrise: new Date(r0 * 1000),
+    sunset: new Date(s0 * 1000),
+    nextSunrise: r1 === null || r1 === undefined ? null : new Date(r1 * 1000),
+  };
+}
+
 export function parseUvMax(json: OpenMeteoResponse): number | null {
   return json.daily?.uv_index_max?.[0] ?? null;
 }
@@ -208,11 +233,14 @@ export async function fetchForecast(
   lon: number,
   signal?: AbortSignal,
 ): Promise<Forecast> {
+  // La qualité de l'air est demandée en parallèle ; son échec n'empêche pas d'afficher la météo.
+  const airPromise = fetchAirQuality(lat, lon, signal);
   const res = await fetch(buildUrl(lat, lon), { signal });
   if (!res.ok) {
     throw new Error(`Open-Meteo a répondu ${res.status}.`);
   }
   const json = (await res.json()) as OpenMeteoResponse;
+  const air = await airPromise;
   return {
     rainSlots: parseForecast(json),
     hours: parseHours(json),
@@ -220,6 +248,8 @@ export async function fetchForecast(
     timezone: typeof json.timezone === 'string' ? json.timezone : undefined,
     uvMaxToday: parseUvMax(json),
     rainTodayMm: parseRainToday(json),
+    sun: parseSun(json),
+    air,
   };
 }
 

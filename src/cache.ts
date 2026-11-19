@@ -1,4 +1,5 @@
 import type { Position } from './location.ts';
+import type { AirQuality } from './air.ts';
 import type { CurrentConditions, Forecast, HourForecast, RainSlot } from './weather.ts';
 
 const KEY = 'pluvia:forecasts:v3';
@@ -16,6 +17,8 @@ interface StoredForecast {
   timezone: string | undefined;
   uvMaxToday?: number | null;
   rainTodayMm?: number | null;
+  sun?: { sunrise: number; sunset: number; nextSunrise: number | null } | null;
+  air?: AirQuality | null;
   rainSlots: { start: number; end: number; mm: number }[];
   hours: (Omit<HourForecast, 'time'> & { time: number })[];
   current: CurrentConditions | null;
@@ -41,6 +44,14 @@ export function saveForecast(
     timezone: forecast.timezone,
     uvMaxToday: forecast.uvMaxToday,
     rainTodayMm: forecast.rainTodayMm,
+    sun: forecast.sun
+      ? {
+          sunrise: forecast.sun.sunrise.getTime(),
+          sunset: forecast.sun.sunset.getTime(),
+          nextSunrise: forecast.sun.nextSunrise?.getTime() ?? null,
+        }
+      : null,
+    air: forecast.air,
     rainSlots: forecast.rainSlots.map((s) => ({ start: s.start.getTime(), end: s.end.getTime(), mm: s.mm })),
     hours: forecast.hours.map((h) => ({ ...h, time: h.time.getTime() })),
     current: forecast.current,
@@ -107,6 +118,14 @@ export function loadForecast(key: string, now: Date = new Date()): CachedForecas
         timezone: stored.timezone,
         uvMaxToday: stored.uvMaxToday ?? null,
         rainTodayMm: stored.rainTodayMm ?? null,
+        sun: stored.sun
+          ? {
+              sunrise: new Date(stored.sun.sunrise),
+              sunset: new Date(stored.sun.sunset),
+              nextSunrise: stored.sun.nextSunrise === null ? null : new Date(stored.sun.nextSunrise),
+            }
+          : null,
+        air: stored.air ?? null,
       },
     };
   } catch {

@@ -1,3 +1,5 @@
+import { AIR_LABELS, airLevel } from './air.ts';
+import type { AirQuality } from './air.ts';
 import type { CurrentConditions, HourForecast } from './weather.ts';
 
 /** Les 16 points de la rose des vents, dans l'ordre à partir du nord (convention française : O = ouest). */
@@ -85,6 +87,7 @@ export function renderConditions(
   uvMaxToday: number | null | undefined,
   hours: HourForecast[] = [],
   rainTodayMm: number | null | undefined = null,
+  air: AirQuality | null | undefined = null,
 ): HTMLElement | null {
   const tiles: HTMLElement[] = [];
 
@@ -141,6 +144,15 @@ export function renderConditions(
     const rain = tile('Cumul de pluie', formatMm(rainTotal(hours, 24)));
     rain.sub.textContent = `sur les ${Math.min(24, hours.length)} prochaines heures`;
     tiles.push(rain.root);
+  }
+
+  if (air) {
+    const level = airLevel(air.aqi);
+    const quality = tile('Qualité de l\'air', String(Math.round(air.aqi)), `aq-${level}`);
+    const parts = [AIR_LABELS[level]];
+    if (has(air.pm25)) parts.push(`PM2,5 : ${Math.round(air.pm25)} µg/m³`);
+    quality.sub.textContent = parts.join(' · ');
+    tiles.push(quality.root);
   }
 
   if (tiles.length === 0) return null;

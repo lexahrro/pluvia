@@ -15,6 +15,7 @@ import type { Selection } from './places.ts';
 import { createTopBar } from './picker.ts';
 import type { TopBar } from './picker.ts';
 import { renderConditions } from './metrics.ts';
+import { renderSun } from './sun.ts';
 import { formatDeviceTime, formatTime, setDisplayTimeZone } from './time.ts';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -61,7 +62,7 @@ function renderShell(): { content: HTMLElement; topBar: TopBar } {
   main.append(
     topBar.element,
     content,
-    el('footer', 'footer', 'Météo et lieux : Open-Meteo.com (CC BY 4.0)'),
+    el('footer', 'footer', 'Météo, lieux et qualité de l\u2019air : Open-Meteo.com (CC BY 4.0) · données air : CAMS'),
   );
   app.append(main);
   return { content, topBar };
@@ -128,8 +129,10 @@ function renderForecast(
   radarSection.append(el('h2', undefined, 'Radar : les 2 dernières heures'));
 
   content.append(hero, chartCard);
-  const conditions = renderConditions(forecast.current, forecast.uvMaxToday, forecast.hours, forecast.rainTodayMm);
+  const conditions = renderConditions(forecast.current, forecast.uvMaxToday, forecast.hours, forecast.rainTodayMm, forecast.air);
   if (conditions) content.append(conditions);
+  const sun = renderSun(forecast.sun);
+  if (sun) content.append(sun);
   content.append(radarSection, hourlySection, renderDetails(slots));
   if (position.source === 'default') {
     content.append(
