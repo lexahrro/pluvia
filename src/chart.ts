@@ -4,9 +4,9 @@ import type { RainSlot } from './weather.ts';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const WIDTH = 320;
-const HEIGHT = 170;
+const HEIGHT = 108;
 const TOP = 10;
-const BASELINE = 130;
+const BASELINE = 76;
 const PADDING_X = 8;
 /** Débit (mm/h) à partir duquel la barre atteint la hauteur maximale. */
 const MAX_MM_PER_HOUR = 10;
