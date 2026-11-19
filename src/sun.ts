@@ -42,13 +42,11 @@ function headline(sun: SunTimes, state: SunState): string {
   const wait = state.untilNext !== null ? formatDuration(state.untilNext) : null;
   switch (state.phase) {
     case 'before-sunrise':
-      return `Lever du soleil dans ${wait}`;
+      return `Lever dans ${wait}`;
     case 'day':
-      return `Coucher du soleil dans ${wait}`;
+      return `Coucher dans ${wait}`;
     default:
-      return sun.nextSunrise
-        ? `Soleil couché · prochain lever à ${formatTime(sun.nextSunrise)} (dans ${wait})`
-        : 'Soleil couché';
+      return sun.nextSunrise ? `Soleil couché · lever à ${formatTime(sun.nextSunrise)} (dans ${wait})` : 'Soleil couché';
   }
 }
 
@@ -94,7 +92,7 @@ function gradient(
 
 /** Arc du soleil avec dégradé, et position actuelle entre le lever et le coucher. */
 function renderArc(state: SunState): SVGSVGElement {
-  const root = svg('svg', { viewBox: '0 0 300 92', class: 'sun-arc', role: 'img' });
+  const root = svg('svg', { viewBox: '24 0 252 92', class: 'sun-arc', role: 'img' });
   root.setAttribute('aria-label', 'Position du soleil entre le lever et le coucher');
 
   const x0 = CX - HALF_CHORD;
@@ -171,13 +169,19 @@ export function renderSun(sun: SunTimes | null, now: Date = new Date()): HTMLEle
   const set = sun.sunset.getTime();
 
   const card = el('div', 'sun-card');
-  const times = el('div', 'sun-times');
-  times.append(event('rise', 'Lever', formatTime(sun.sunrise)), event('set', 'Coucher', formatTime(sun.sunset)));
-  card.append(
+  const row = el('div', 'sun-row');
+  row.append(
+    event('rise', 'Lever', formatTime(sun.sunrise)),
     renderArc(state),
-    times,
-    el('p', 'sun-headline', headline(sun, state)),
-    el('p', 'sun-meta', `Midi solaire ${formatTime(new Date((rise + set) / 2))} · Durée du jour ${formatDuration(set - rise)}`),
+    event('set', 'Coucher', formatTime(sun.sunset)),
+  );
+  card.append(
+    row,
+    el(
+      'p',
+      'sun-meta',
+      `${headline(sun, state)} · Midi solaire ${formatTime(new Date((rise + set) / 2))} · Jour ${formatDuration(set - rise)}`,
+    ),
   );
 
   const section = el('section', 'sun');
