@@ -41,14 +41,16 @@ export function renderHourly(hours: HourForecast[], now: Date = new Date()): HTM
 
     const wind = el('span', 'hour-wind');
     if (hour.windSpeed !== null) {
-      wind.textContent = `${Math.round(hour.windSpeed)}`;
       if (hour.windDirection !== null) {
+        // Direction au-dessus de la vitesse : flèche (où souffle le vent) + point cardinal d'où il vient.
+        const direction = el('span', 'hour-wind-dir');
         const arrow = el('span', 'wind-arrow', '↑');
         arrow.style.transform = `rotate(${Math.round(hour.windDirection + 180)}deg)`;
         arrow.setAttribute('aria-hidden', 'true');
-        wind.prepend(arrow, ' ');
-        wind.title = `Vent ${Math.round(hour.windSpeed)} km/h depuis ${compassLabel(hour.windDirection)}`;
+        direction.append(arrow, ` ${compassLabel(hour.windDirection)}`);
+        wind.append(direction);
       }
+      wind.append(el('span', 'hour-wind-speed', `${Math.round(hour.windSpeed)} km/h`));
     }
 
     // L'UV n'a de sens que de jour : on masque les valeurs qui arrondissent à 0.
