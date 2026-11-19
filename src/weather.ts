@@ -50,6 +50,8 @@ export interface Forecast {
   timezone: string | undefined;
   /** Indice UV maximal prévu aujourd'hui (jour du lieu) */
   uvMaxToday: number | null;
+  /** Cumul de pluie de la journée en cours (de minuit à minuit, heure du lieu), en mm */
+  rainTodayMm: number | null;
 }
 
 export type RainLevel = 'none' | 'light' | 'moderate' | 'heavy';
@@ -71,6 +73,7 @@ interface OpenMeteoResponse {
   };
   daily?: {
     uv_index_max?: Nums;
+    precipitation_sum?: Nums;
   };
   hourly?: {
     time: number[];
@@ -104,7 +107,7 @@ export function buildUrl(lat: number, lon: number): string {
     hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day,wind_speed_10m,wind_direction_10m,uv_index',
     current:
       'temperature_2m,weather_code,is_day,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index',
-    daily: 'uv_index_max',
+    daily: 'uv_index_max,precipitation_sum',
     forecast_days: '3', // assez pour couvrir 48 h à partir de maintenant
     timeformat: 'unixtime', // horodatages UTC, convertis ensuite dans le fuseau local
     timezone: 'auto',
@@ -192,6 +195,10 @@ export function parseCurrent(json: OpenMeteoResponse): CurrentConditions | null 
 }
 
 /** Indice UV maximal du premier jour des prévisions (aujourd'hui, jour du lieu). */
+export function parseRainToday(json: OpenMeteoResponse): number | null {
+  return json.daily?.precipitation_sum?.[0] ?? null;
+}
+
 export function parseUvMax(json: OpenMeteoResponse): number | null {
   return json.daily?.uv_index_max?.[0] ?? null;
 }
@@ -212,6 +219,7 @@ export async function fetchForecast(
     current: parseCurrent(json),
     timezone: typeof json.timezone === 'string' ? json.timezone : undefined,
     uvMaxToday: parseUvMax(json),
+    rainTodayMm: parseRainToday(json),
   };
 }
 

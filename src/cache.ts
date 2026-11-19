@@ -15,6 +15,7 @@ interface StoredForecast {
   position: Position;
   timezone: string | undefined;
   uvMaxToday?: number | null;
+  rainTodayMm?: number | null;
   rainSlots: { start: number; end: number; mm: number }[];
   hours: (Omit<HourForecast, 'time'> & { time: number })[];
   current: CurrentConditions | null;
@@ -39,6 +40,7 @@ export function saveForecast(
     position,
     timezone: forecast.timezone,
     uvMaxToday: forecast.uvMaxToday,
+    rainTodayMm: forecast.rainTodayMm,
     rainSlots: forecast.rainSlots.map((s) => ({ start: s.start.getTime(), end: s.end.getTime(), mm: s.mm })),
     hours: forecast.hours.map((h) => ({ ...h, time: h.time.getTime() })),
     current: forecast.current,
@@ -104,6 +106,7 @@ export function loadForecast(key: string, now: Date = new Date()): CachedForecas
         current: stored.current ? { ...stored.current, apparentTemperature: stored.current.apparentTemperature ?? null } : stored.current,
         timezone: stored.timezone,
         uvMaxToday: stored.uvMaxToday ?? null,
+        rainTodayMm: stored.rainTodayMm ?? null,
       },
     };
   } catch {

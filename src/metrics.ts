@@ -84,6 +84,7 @@ export function renderConditions(
   current: CurrentConditions | null,
   uvMaxToday: number | null | undefined,
   hours: HourForecast[] = [],
+  rainTodayMm: number | null | undefined = null,
 ): HTMLElement | null {
   const tiles: HTMLElement[] = [];
 
@@ -129,12 +130,16 @@ export function renderConditions(
     tiles.push(uv.root);
   }
 
-  if (hours.length > 0) {
-    const next24 = hours.slice(0, 24);
-    const rain = tile('Cumul de pluie', formatMm(rainTotal(hours, 24)));
-    const parts = [`sur ${next24.length < 24 ? `les ${next24.length}` : 'les 24'} prochaines heures`];
-    if (hours.length > 24) parts.push(`${formatMm(rainTotal(hours, 48))} sur 48 h`);
+  if (has(rainTodayMm)) {
+    // Cumul de la journée en cours (de minuit à minuit, heure du lieu) : déjà tombé + prévu.
+    const rain = tile('Cumul de pluie', formatMm(rainTodayMm));
+    const parts = ["aujourd'hui"];
+    if (hours.length > 0) parts.push(`${formatMm(rainTotal(hours, 24))} dans les 24 h à venir`);
     rain.sub.textContent = parts.join(' · ');
+    tiles.push(rain.root);
+  } else if (hours.length > 0) {
+    const rain = tile('Cumul de pluie', formatMm(rainTotal(hours, 24)));
+    rain.sub.textContent = `sur les ${Math.min(24, hours.length)} prochaines heures`;
     tiles.push(rain.root);
   }
 
