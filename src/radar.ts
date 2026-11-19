@@ -212,6 +212,10 @@ function createView(
       playBtn.disabled = true;
     });
 
+  // La carte suit les changements de taille de son conteneur (rotation de l'écran, redimensionnement).
+  const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => map.invalidateSize()) : undefined;
+  resizeObserver?.observe(mapEl);
+
   return {
     invalidate() {
       if (!destroyed) map.invalidateSize();
@@ -219,6 +223,7 @@ function createView(
     destroy() {
       destroyed = true;
       window.clearTimeout(timer);
+      resizeObserver?.disconnect();
       map.remove();
     },
   };
@@ -234,14 +239,15 @@ export function mountRadar(container: HTMLElement, position: Position): RadarHan
   const indexPromise = fetchRadarIndex();
   indexPromise.catch(() => undefined);
 
+  // L'aperçu doit être dans la page AVANT de créer la carte : Leaflet mesure alors la bonne taille.
   const preview = el('div', 'radar-preview');
+  container.append(preview);
   const previewView = createView(preview, position, indexPromise, false);
   const openBtn = el('button', 'radar-open');
   openBtn.type = 'button';
   openBtn.setAttribute('aria-label', 'Ouvrir le radar en grand');
   openBtn.append(el('span', 'radar-open-hint', '⤢ Agrandir'));
   preview.append(openBtn);
-  container.append(preview);
 
   let modal: { dialog: HTMLDialogElement; view: RadarView } | undefined;
 
