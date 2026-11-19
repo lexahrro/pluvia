@@ -92,7 +92,7 @@ function gradient(
 
 /** Arc du soleil avec dégradé, et position actuelle entre le lever et le coucher. */
 function renderArc(state: SunState): SVGSVGElement {
-  const root = svg('svg', { viewBox: '24 0 252 92', class: 'sun-arc', role: 'img' });
+  const root = svg('svg', { viewBox: '24 10 252 82', class: 'sun-arc', role: 'img' });
   root.setAttribute('aria-label', 'Position du soleil entre le lever et le coucher');
 
   const x0 = CX - HALF_CHORD;
@@ -177,11 +177,8 @@ export function renderSun(sun: SunTimes | null, now: Date = new Date()): HTMLEle
   );
   card.append(
     row,
-    el(
-      'p',
-      'sun-meta',
-      `${headline(sun, state)} · Midi solaire ${formatTime(new Date((rise + set) / 2))} · Jour ${formatDuration(set - rise)}`,
-    ),
+    el('p', 'sun-headline', headline(sun, state)),
+    el('p', 'sun-meta', `Midi solaire ${formatTime(new Date((rise + set) / 2))} · Durée du jour ${formatDuration(set - rise)}`),
   );
 
   const section = el('section', 'sun');

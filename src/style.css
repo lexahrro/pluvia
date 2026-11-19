@@ -627,7 +627,7 @@ h1 {
 }
 
 .sun-card {
-  padding: 0.9rem 1rem 1rem;
+  padding: 1rem;
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.06);
 }
@@ -694,8 +694,16 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
+.sun-headline {
+  margin: 0.6rem 0 0.1rem;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
 .sun-meta {
-  margin: 0.5rem 0 0;
+  margin: 0;
+  line-height: 1.3;
   text-align: center;
   color: var(--muted);
   font-size: 0.8rem;
