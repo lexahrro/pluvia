@@ -10,7 +10,7 @@ crons = ["*/10 * * * *"]
 #   npx wrangler kv namespace create SUBS
 [[kv_namespaces]]
 binding = "SUBS"
-id = "REMPLACER_PAR_L_ID_DU_KV"
+id = "e444a284750d42e892324c0c43937b93"
 
 [vars]
 # Sites autorisés à appeler l'API (l'application en ligne, et l'aperçu local).
