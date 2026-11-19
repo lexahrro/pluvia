@@ -100,7 +100,8 @@ export function loadForecast(key: string, now: Date = new Date()): CachedForecas
       forecast: {
         rainSlots,
         hours,
-        current: stored.current,
+        // Les anciennes entrées n'ont pas la température ressentie.
+        current: stored.current ? { ...stored.current, apparentTemperature: stored.current.apparentTemperature ?? null } : stored.current,
         timezone: stored.timezone,
         uvMaxToday: stored.uvMaxToday ?? null,
       },

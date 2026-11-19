@@ -78,6 +78,14 @@ export function renderConditions(
   if (!current) return null;
   const tiles: HTMLElement[] = [];
 
+  if (has(current.apparentTemperature)) {
+    const feels = tile('Ressenti', `${Math.round(current.apparentTemperature)}°`);
+    const gap = Math.round(current.apparentTemperature) - Math.round(current.temperature);
+    feels.sub.textContent =
+      gap === 0 ? 'Comme la température réelle' : `${Math.abs(gap)}° de ${gap < 0 ? 'moins' : 'plus'} que le réel`;
+    tiles.push(feels.root);
+  }
+
   if (has(current.windSpeed)) {
     const wind = tile('Vent', KMH(current.windSpeed));
     const parts: string[] = [];

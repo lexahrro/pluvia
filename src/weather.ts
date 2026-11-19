@@ -28,6 +28,8 @@ export interface CurrentConditions {
   temperature: number;
   weatherCode: number;
   isDay: boolean;
+  /** Température ressentie en °C */
+  apparentTemperature: number | null;
   /** Humidité relative en % */
   humidity: number | null;
   /** Vitesse du vent à 10 m en km/h */
@@ -60,6 +62,7 @@ interface OpenMeteoResponse {
     temperature_2m: number | null;
     weather_code: number | null;
     is_day: number | null;
+    apparent_temperature?: number | null;
     relative_humidity_2m?: number | null;
     wind_speed_10m?: number | null;
     wind_gusts_10m?: number | null;
@@ -100,7 +103,7 @@ export function buildUrl(lat: number, lon: number): string {
     minutely_15: 'precipitation',
     hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day,wind_speed_10m,wind_direction_10m,uv_index',
     current:
-      'temperature_2m,weather_code,is_day,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index',
+      'temperature_2m,weather_code,is_day,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index',
     daily: 'uv_index_max',
     forecast_days: '3', // assez pour couvrir 48 h à partir de maintenant
     timeformat: 'unixtime', // horodatages UTC, convertis ensuite dans le fuseau local
@@ -179,6 +182,7 @@ export function parseCurrent(json: OpenMeteoResponse): CurrentConditions | null 
     temperature: c.temperature_2m,
     weatherCode: c.weather_code,
     isDay: c.is_day !== 0,
+    apparentTemperature: c.apparent_temperature ?? null,
     humidity: c.relative_humidity_2m ?? null,
     windSpeed: c.wind_speed_10m ?? null,
     windGusts: c.wind_gusts_10m ?? null,
