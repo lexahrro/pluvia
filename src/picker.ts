@@ -1,5 +1,6 @@
 import { addPlace, loadPlaces, MIN_QUERY_LENGTH, removePlace, searchPlaces } from './places.ts';
 import type { Place, Selection } from './places.ts';
+import { icon } from './icons.ts';
 
 export interface TopBar {
   element: HTMLElement;
@@ -45,15 +46,19 @@ export function createTopBar(
   toggle.type = 'button';
   toggle.setAttribute('aria-expanded', 'false');
   toggle.setAttribute('aria-controls', 'picker');
-  toggle.append(el('span', undefined, '📍 '), labelEl, el('span', 'caret', ' ▾'));
+  // Icône selon le choix : flèche pour « ma position », barres pour une ville de la liste.
+  toggle.append(icon(selection.kind === 'gps' ? 'location-arrow' : 'bars', 'place-icon'), labelEl, icon('chevron-down', 'caret'));
   row.append(el('h1', undefined, 'Pluvia'), toggle);
 
   const panel = el('section', 'picker');
   panel.id = 'picker';
   panel.hidden = true;
 
-  const gps = el('button', `picker-gps${selection.kind === 'gps' ? ' active' : ''}`, '📍 Ma position');
+  const gps = el('button', `picker-gps${selection.kind === 'gps' ? ' active' : ''}`);
   gps.type = 'button';
+  const gpsContent = el('span', 'picker-gps-content');
+  gpsContent.append(icon('location-arrow', 'place-icon'), 'Ma position');
+  gps.append(gpsContent);
   gps.addEventListener('click', () => onSelect({ kind: 'gps' }));
 
   const input = el('input', 'picker-input');
