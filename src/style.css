@@ -46,7 +46,7 @@ body {
   min-height: 100dvh;
   max-width: 32rem;
   margin: 0 auto;
-  padding: calc(env(safe-area-inset-top) + 1.5rem) 1.25rem calc(env(safe-area-inset-bottom) + 1rem);
+  padding: calc(env(safe-area-inset-top) + 1.25rem) 1.25rem calc(env(safe-area-inset-bottom) + 1rem);
   display: flex;
   flex-direction: column;
 }
@@ -126,7 +126,7 @@ h1 {
 }
 
 .top {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .top-row {
@@ -134,7 +134,7 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding-bottom: 0.75rem;
+  padding-bottom: 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
