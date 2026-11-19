@@ -128,12 +128,14 @@ function renderForecast(
   const radarSection = el('section', 'radar');
   radarSection.append(el('h2', undefined, 'Radar : les 2 dernières heures'));
 
-  content.append(hero, chartCard);
+  // Ordre d'affichage : pluie prévue, radar, conditions actuelles, prochaines 48 h, soleil.
+  content.append(hero, chartCard, radarSection);
   const conditions = renderConditions(forecast.current, forecast.uvMaxToday, forecast.hours, forecast.rainTodayMm, forecast.air);
   if (conditions) content.append(conditions);
+  content.append(hourlySection);
   const sun = renderSun(forecast.sun);
   if (sun) content.append(sun);
-  content.append(radarSection, hourlySection, renderDetails(slots));
+  content.append(renderDetails(slots));
   if (position.source === 'default') {
     content.append(
       el('p', 'where warn', `${position.reason ?? ''} Position par défaut : Paris. Choisis une ville pour changer.`),
