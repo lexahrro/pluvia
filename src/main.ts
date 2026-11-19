@@ -128,7 +128,7 @@ function renderForecast(
   radarSection.append(el('h2', undefined, 'Radar : les 2 dernières heures'));
 
   content.append(hero, chartCard);
-  const conditions = renderConditions(forecast.current, forecast.uvMaxToday);
+  const conditions = renderConditions(forecast.current, forecast.uvMaxToday, forecast.hours);
   if (conditions) content.append(conditions);
   content.append(radarSection, hourlySection, renderDetails(slots));
   if (position.source === 'default') {

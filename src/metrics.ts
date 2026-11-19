@@ -1,4 +1,4 @@
-import type { CurrentConditions } from './weather.ts';
+import type { CurrentConditions, HourForecast } from './weather.ts';
 
 /** Les 16 points de la rose des vents, dans l'ordre à partir du nord (convention française : O = ouest). */
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
@@ -71,14 +71,23 @@ function tile(title: string, value: string, className = ''): { root: HTMLElement
 const KMH = (value: number): string => `${Math.round(value)} km/h`;
 
 /** Bloc « Conditions » : vent, humidité, UV. Renvoie null si aucune des trois mesures n'est disponible. */
+/** Cumul de pluie (mm) sur les `count` premières heures de la prévision. */
+export function rainTotal(hours: HourForecast[], count: number): number {
+  return hours.slice(0, count).reduce((sum, hour) => sum + (hour.precipitation || 0), 0);
+}
+
+function formatMm(mm: number): string {
+  return mm < 0.05 ? '0 mm' : `${mm.toFixed(1).replace('.', ',')} mm`;
+}
+
 export function renderConditions(
   current: CurrentConditions | null,
   uvMaxToday: number | null | undefined,
+  hours: HourForecast[] = [],
 ): HTMLElement | null {
-  if (!current) return null;
   const tiles: HTMLElement[] = [];
 
-  if (has(current.apparentTemperature)) {
+  if (current && has(current.apparentTemperature)) {
     const feels = tile('Ressenti', `${Math.round(current.apparentTemperature)}°`);
     const gap = Math.round(current.apparentTemperature) - Math.round(current.temperature);
     feels.sub.textContent =
@@ -86,7 +95,7 @@ export function renderConditions(
     tiles.push(feels.root);
   }
 
-  if (has(current.windSpeed)) {
+  if (current && has(current.windSpeed)) {
     const wind = tile('Vent', KMH(current.windSpeed));
     const parts: string[] = [];
     if (has(current.windDirection)) {
@@ -105,19 +114,28 @@ export function renderConditions(
     tiles.push(wind.root);
   }
 
-  if (has(current.humidity)) {
+  if (current && has(current.humidity)) {
     const humidity = tile('Humidité', `${Math.round(current.humidity)} %`);
     humidity.sub.textContent = humidityLevel(current.humidity);
     tiles.push(humidity.root);
   }
 
-  if (has(current.uvIndex)) {
+  if (current && has(current.uvIndex)) {
     const category = uvCategory(current.uvIndex);
     const uv = tile('Indice UV', String(Math.round(current.uvIndex)), `uv-${category}`);
     const parts = [UV_LABELS[category]];
     if (has(uvMaxToday)) parts.push(`max ${Math.round(uvMaxToday)} aujourd'hui`);
     uv.sub.textContent = parts.join(' · ');
     tiles.push(uv.root);
+  }
+
+  if (hours.length > 0) {
+    const next24 = hours.slice(0, 24);
+    const rain = tile('Cumul de pluie', formatMm(rainTotal(hours, 24)));
+    const parts = [`sur ${next24.length < 24 ? `les ${next24.length}` : 'les 24'} prochaines heures`];
+    if (hours.length > 24) parts.push(`${formatMm(rainTotal(hours, 48))} sur 48 h`);
+    rain.sub.textContent = parts.join(' · ');
+    tiles.push(rain.root);
   }
 
   if (tiles.length === 0) return null;
