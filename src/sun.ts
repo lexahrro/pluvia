@@ -71,37 +71,99 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+// Géométrie : un segment de cercle (moins qu'un demi-cercle), posé sur la ligne d'horizon.
 const CX = 150;
-const CY = 112;
-const RX = 100;
-const RY = 100;
+const HORIZON_Y = 76;
+const HALF_CHORD = 110; // demi-largeur de l'arc à l'horizon
+const SAGITTA = 46; // hauteur du sommet de l'arc au-dessus de l'horizon
+const RADIUS = (HALF_CHORD * HALF_CHORD + SAGITTA * SAGITTA) / (2 * SAGITTA);
+const CENTER_Y = HORIZON_Y + RADIUS - SAGITTA;
+const HALF_ANGLE = Math.asin(HALF_CHORD / RADIUS);
 
-/** Arc du soleil avec sa position actuelle entre le lever et le coucher. */
+function gradient(
+  tag: 'linearGradient' | 'radialGradient',
+  attrs: Record<string, string>,
+  stops: [string, string, string][],
+): SVGElement {
+  const g = svg(tag, attrs);
+  for (const [offset, color, opacity] of stops) {
+    g.append(svg('stop', { offset, 'stop-color': color, 'stop-opacity': opacity }));
+  }
+  return g;
+}
+
+/** Arc du soleil avec dégradé, et position actuelle entre le lever et le coucher. */
 function renderArc(state: SunState): SVGSVGElement {
-  const root = svg('svg', { viewBox: '0 0 300 124', class: 'sun-arc', role: 'img' });
+  const root = svg('svg', { viewBox: '0 0 300 92', class: 'sun-arc', role: 'img' });
   root.setAttribute('aria-label', 'Position du soleil entre le lever et le coucher');
-  root.append(
-    svg('line', { x1: '20', y1: String(CY), x2: '280', y2: String(CY), class: 'sun-horizon' }),
-    svg('path', { d: `M ${CX - RX} ${CY} A ${RX} ${RY} 0 0 1 ${CX + RX} ${CY}`, class: 'sun-path' }),
+
+  const x0 = CX - HALF_CHORD;
+  const x1 = CX + HALF_CHORD;
+  const arc = `M ${x0} ${HORIZON_Y} A ${RADIUS.toFixed(1)} ${RADIUS.toFixed(1)} 0 0 1 ${x1} ${HORIZON_Y}`;
+
+  const defs = svg('defs', {});
+  defs.append(
+    // Remplissage sous l'arc : léger voile clair qui s'estompe vers l'horizon.
+    gradient('linearGradient', { id: 'sun-fill', x1: '0', y1: '0', x2: '0', y2: '1' }, [
+      ['0', '#ffffff', '0.28'],
+      ['1', '#ffffff', '0'],
+    ]),
+    // Trait de l'arc : plus net au sommet, qui s'efface vers les extrémités.
+    gradient('linearGradient', { id: 'sun-stroke', x1: '0', y1: '0', x2: '1', y2: '0' }, [
+      ['0', '#ffffff', '0'],
+      ['0.5', '#ffffff', '0.6'],
+      ['1', '#ffffff', '0'],
+    ]),
+    gradient('radialGradient', { id: 'sun-core' }, [
+      ['0', '#ffb347', '1'],
+      ['1', '#ff6a00', '1'],
+    ]),
+    gradient('radialGradient', { id: 'sun-glow' }, [
+      ['0', '#ff8a1f', '0.55'],
+      ['1', '#ff8a1f', '0'],
+    ]),
   );
+
+  root.append(
+    defs,
+    svg('path', { d: `${arc} Z`, fill: 'url(#sun-fill)', stroke: 'none' }),
+    svg('path', { d: arc, class: 'sun-path', stroke: 'url(#sun-stroke)' }),
+  );
+
   // Le marqueur suit l'arc le jour ; la nuit, il reste à l'horizon, côté lever ou côté coucher.
-  const angle = Math.PI * state.progress;
-  const x = CX - RX * Math.cos(angle);
-  const y = CY - RY * Math.sin(angle);
-  const night = state.phase !== 'day';
-  root.append(
-    svg('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: '8', class: night ? 'sun-dot sun-night' : 'sun-dot' }),
-  );
+  const phi = -HALF_ANGLE + 2 * HALF_ANGLE * state.progress;
+  const x = CX + RADIUS * Math.sin(phi);
+  const y = CENTER_Y - RADIUS * Math.cos(phi);
+  const cx = x.toFixed(1);
+  const cy = y.toFixed(1);
+  if (state.phase === 'day') {
+    root.append(
+      svg('circle', { cx, cy, r: '15', fill: 'url(#sun-glow)' }),
+      svg('circle', { cx, cy, r: '8', fill: 'url(#sun-core)', class: 'sun-dot' }),
+    );
+  } else {
+    root.append(svg('circle', { cx, cy, r: '7', class: 'sun-dot sun-night' }));
+  }
   return root;
 }
 
-function stat(label: string, value: string): HTMLElement {
-  const box = el('div', 'sun-stat');
-  box.append(el('span', 'sun-stat-label', label), el('span', 'sun-stat-value', value));
+/** Petite icône lever / coucher : demi-soleil sur l'horizon et flèche. */
+function icon(kind: 'rise' | 'set'): SVGSVGElement {
+  const root = svg('svg', { viewBox: '0 0 24 24', class: 'sun-icon', 'aria-hidden': 'true' });
+  const arrow = kind === 'rise' ? 'M12 8 V3 M9.5 5.5 L12 3 L14.5 5.5' : 'M12 3 V8 M9.5 5.5 L12 8 L14.5 5.5';
+  for (const d of ['M3 19 H21', 'M7 19 A5 5 0 0 1 17 19', 'M4.6 12.6 L6 14', 'M19.4 12.6 L18 14', arrow]) {
+    root.append(svg('path', { d }));
+  }
+  return root;
+}
+
+function event(kind: 'rise' | 'set', label: string, time: string): HTMLElement {
+  const box = el('div', `sun-event sun-${kind}`);
+  box.append(icon(kind), el('span', 'sun-event-label', label), el('span', 'sun-event-time', time));
   return box;
 }
 
-/** Section « Soleil » : lever, coucher, midi solaire, durée du jour et position actuelle. */
+/** Section « Soleil » : lever, coucher, position actuelle, midi solaire et durée du jour. */
 export function renderSun(sun: SunTimes | null, now: Date = new Date()): HTMLElement | null {
   if (!sun || sun.sunset.getTime() <= sun.sunrise.getTime()) return null;
   const state = sunState(sun, now);
@@ -109,14 +171,14 @@ export function renderSun(sun: SunTimes | null, now: Date = new Date()): HTMLEle
   const set = sun.sunset.getTime();
 
   const card = el('div', 'sun-card');
-  const stats = el('div', 'sun-stats');
-  stats.append(
-    stat('Lever', formatTime(sun.sunrise)),
-    stat('Midi solaire', formatTime(new Date((rise + set) / 2))),
-    stat('Coucher', formatTime(sun.sunset)),
-    stat('Durée du jour', formatDuration(set - rise)),
+  const times = el('div', 'sun-times');
+  times.append(event('rise', 'Lever', formatTime(sun.sunrise)), event('set', 'Coucher', formatTime(sun.sunset)));
+  card.append(
+    renderArc(state),
+    times,
+    el('p', 'sun-headline', headline(sun, state)),
+    el('p', 'sun-meta', `Midi solaire ${formatTime(new Date((rise + set) / 2))} · Durée du jour ${formatDuration(set - rise)}`),
   );
-  card.append(renderArc(state), el('p', 'sun-headline', headline(sun, state)), stats);
 
   const section = el('section', 'sun');
   section.append(el('h2', undefined, 'Soleil'), card);
