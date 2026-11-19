@@ -1,0 +1,13 @@
+{
+  "name": "pluvia-alerts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --test-scheduled",
+    "vapid": "node scripts/generate-vapid.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

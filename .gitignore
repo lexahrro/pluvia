@@ -1,3 +1,6 @@
 node_modules
 dist
 .DS_Store
+worker/vapid-private.jwk.json
+worker/.dev.vars
+worker/.wrangler
