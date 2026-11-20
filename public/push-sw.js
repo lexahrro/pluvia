@@ -13,6 +13,8 @@ self.addEventListener('push', (event) => {
       // Une nouvelle alerte remplace l'ancienne au lieu de s'empiler.
       tag: data.tag || 'pluvia',
       icon: 'pwa-192.png',
+      // Petite icône monochrome (barre d'état Android) : seule la forme compte, la couleur est ignorée.
+      badge: 'badge-96.png',
     }),
   );
 });

@@ -1,4 +1,4 @@
-import { buildMessage, decide, DEFAULT_SETTINGS, parseSettings, parseSlots } from './rain.ts';
+import { buildMessage, cleanCity, decide, DEFAULT_SETTINGS, parseSettings, parseSlots } from './rain.ts';
 import type { AlertSettings, Slot } from './rain.ts';
 import { base64urlToBytes, importVapidPrivateKey, sendPush } from './webpush.ts';
 import type { PushTarget } from './webpush.ts';
@@ -25,6 +25,8 @@ interface Subscriber extends PushTarget {
   lat: number;
   lon: number;
   timezone: string;
+  /** Nom de la ville choisie (absent pour la position GPS) */
+  city?: string;
   /** Pas d'alerte avant cet instant (ms) */
   quietUntil: number;
   /** Réglages choisis par l'utilisateur (absents pour les abonnés antérieurs : valeurs par défaut) */
@@ -171,6 +173,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
       lat,
       lon,
       timezone: validTimeZone(body.timezone),
+      city: cleanCity(body.city),
       // Nouveau lieu : on repart de zéro pour pouvoir alerter tout de suite.
       quietUntil: moved ? 0 : previous.quietUntil,
       // Réglages absents de la requête : on garde les précédents.
@@ -262,7 +265,7 @@ export async function runAlerts(env: Env, nowMs: number = Date.now(), fetcher: t
     if (!decision.alert) continue;
 
     try {
-      const status = await sendPush(sub, { ...buildMessage(decision.alert, sub.timezone), tag: 'pluvia-rain' }, vapid, fetcher);
+      const status = await sendPush(sub, { ...buildMessage(decision.alert, sub.timezone, sub.city), tag: 'pluvia-rain' }, vapid, fetcher);
       if (status === 404 || status === 410) {
         delete store[id]; // l'abonnement n'existe plus (appli désinstallée, autorisation retirée)
         changed = true;

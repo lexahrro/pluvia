@@ -142,6 +142,7 @@ function renderForecast(
       lat: position.lat,
       lon: position.lon,
       name: selectionLabel(selection, position),
+      city: selection.kind === 'place' ? selection.place.name : undefined,
       timezone: forecast.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
     }),
   );

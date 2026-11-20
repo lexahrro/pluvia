@@ -112,6 +112,8 @@ export interface Alert {
   minutes: number;
   /** Débit maximal prévu, en mm/h */
   peakMmPerHour: number;
+  /** Cumul prévu sur l'épisode (jusqu'à la fin de la prévision si elle s'arrête avant), en mm */
+  totalMm: number;
 }
 
 export interface Decision {
@@ -156,6 +158,7 @@ export function decide(
   const endsInsideForecast = last < slots.length - 1;
   const peak = Math.max(...slots.slice(trigger, last + 1).map((s) => s.mm * 4));
   const endMs = slots[last].end;
+  const totalMm = slots.slice(trigger, last + 1).reduce((sum, s) => sum + s.mm, 0);
 
   return {
     alert: {
@@ -163,6 +166,7 @@ export function decide(
       endMs: endsInsideForecast ? endMs : null,
       minutes: Math.max(1, Math.round((slots[trigger].start - nowMs) / 60_000)),
       peakMmPerHour: peak,
+      totalMm,
     },
     quietUntil: endMs + QUIET_AFTER_MS,
   };
@@ -178,12 +182,24 @@ function clock(ms: number, timeZone: string): string {
   return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone }).format(ms);
 }
 
+function formatMm(mm: number): string {
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Math.round(mm * 10) / 10);
+}
+
+/** Nom de ville accepté (texte court, sans caractères de contrôle) ; undefined sinon. */
+export function cleanCity(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const city = value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+  return city.length > 0 && city.length <= 60 ? city : undefined;
+}
+
 /** Texte de la notification, avec les heures dans le fuseau du lieu surveillé. */
-export function buildMessage(alert: Alert, timeZone: string): { title: string; body: string } {
+export function buildMessage(alert: Alert, timeZone: string, city?: string): { title: string; body: string } {
   const start = clock(alert.startMs, timeZone);
   const until = alert.endMs === null ? 'pour un moment' : `jusqu'à environ ${clock(alert.endMs, timeZone)}`;
+  const amount = `${formatMm(alert.totalMm)} mm prévus`;
   return {
     title: `Pluie ${intensityLabel(alert.peakMmPerHour)} dans ${alert.minutes} min`,
-    body: `À partir de ${start}, ${until}.`,
+    body: `À partir de ${start}, ${until}.\n${city ? `${city} · ${amount}` : amount}`,
   };
 }

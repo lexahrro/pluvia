@@ -154,7 +154,7 @@ export function renderAlerts(current: AlertPlace): HTMLElement {
         parts.push(row);
       } else {
         note('Reçois une notification quand la pluie commence bientôt. Tu pourras régler le délai, l’intensité et les heures de silence.');
-        note('Ta position (arrondie à environ 1 km) est enregistrée sur un petit serveur gratuit pour surveiller la météo. Tu peux tout supprimer en désactivant les alertes.', 'alerts-sub');
+        note('Ta position (arrondie à environ 1 km) et, si tu as choisi une ville, son nom sont enregistrés sur un petit serveur gratuit pour surveiller la météo. Tu peux tout supprimer en désactivant les alertes.', 'alerts-sub');
         parts.push(button(`Activer pour ${current.name}`, () => void run(async () => (await enableAlerts(current), 'Alertes activées.'))));
       }
     }

@@ -15,6 +15,8 @@ export interface AlertPlace {
   lon: number;
   name: string;
   timezone: string;
+  /** Nom de la ville choisie, pour l'afficher dans la notification (absent pour la position GPS) */
+  city?: string;
 }
 
 export type MinLevel = 'any' | 'moderate' | 'heavy';
@@ -96,7 +98,7 @@ export function loadSavedPlace(): AlertPlace | undefined {
     if (typeof value.lat !== 'number' || typeof value.lon !== 'number' || typeof value.name !== 'string') {
       return undefined;
     }
-    return { lat: value.lat, lon: value.lon, name: value.name, timezone: value.timezone ?? 'UTC' };
+    return { lat: value.lat, lon: value.lon, name: value.name, timezone: value.timezone ?? 'UTC', city: typeof value.city === 'string' ? value.city : undefined };
   } catch {
     return undefined;
   }
@@ -158,7 +160,7 @@ export async function enableAlerts(place: AlertPlace): Promise<void> {
   const subscription =
     (await reg.pushManager.getSubscription()) ??
     (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64urlToBytes(VAPID_PUBLIC_KEY) }));
-  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone, settings: serverSettings(loadSettings()) });
+  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone, city: place.city, settings: serverSettings(loadSettings()) });
   savePlace(place);
 }
 
@@ -166,7 +168,7 @@ export async function enableAlerts(place: AlertPlace): Promise<void> {
 export async function moveAlerts(place: AlertPlace): Promise<void> {
   const subscription = await currentSubscription();
   if (!subscription) throw new Error('Aucun abonnement actif.');
-  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone, settings: serverSettings(loadSettings()) });
+  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone, city: place.city, settings: serverSettings(loadSettings()) });
   savePlace(place);
 }
 
@@ -175,7 +177,7 @@ export async function updateSettings(settings: AlertSettings): Promise<void> {
   const place = loadSavedPlace();
   const subscription = await currentSubscription();
   if (!place || !subscription) throw new Error('Aucun abonnement actif.');
-  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone, settings: serverSettings(settings) });
+  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone, city: place.city, settings: serverSettings(settings) });
   saveSettings(settings);
 }
 
