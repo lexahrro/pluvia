@@ -906,6 +906,46 @@ html.modal-open {
   margin: 0.6rem 0 0;
 }
 
+.alerts-settings {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.alerts-quiet {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.alerts-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.4rem;
+  padding: 0 0.75rem;
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.9rem;
+}
+
+.alerts-field select,
+.alerts-field input[type='time'] {
+  padding: 0.3rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--fg);
+  font: inherit;
+  color-scheme: dark;
+}
+
+.alerts-field input[type='checkbox'] {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--accent);
+}
+
 .alerts-actions {
   display: flex;
   flex-wrap: wrap;

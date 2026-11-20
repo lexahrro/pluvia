@@ -8,12 +8,71 @@ export const ALERTS_API = 'https://pluvia-alerts.pluvia-alerts.workers.dev';
 /** Clé publique VAPID (publique : elle identifie le serveur d'alertes auprès du navigateur). */
 const VAPID_PUBLIC_KEY = 'BHBX446bNyAwvS1lNsKCeO6RNKF8t_kxjHUtq9TsGVehbYk4coEzA8QV1ExSwDwyoO_XPUeSMuDa6cfLzJMLH1M';
 const STORAGE_KEY = 'pluvia:alerts:v1';
+const SETTINGS_KEY = 'pluvia:alerts:settings:v1';
 
 export interface AlertPlace {
   lat: number;
   lon: number;
   name: string;
   timezone: string;
+}
+
+export type MinLevel = 'any' | 'moderate' | 'heavy';
+
+/** Réglages des alertes (le même format est envoyé au serveur). */
+export interface AlertSettings {
+  /** Prévenir quand la pluie commence dans moins de ce délai (minutes) */
+  leadMin: 15 | 30 | 60;
+  minLevel: MinLevel;
+  /** Plage « ne pas déranger » en heures locales de l'appareil ; null = désactivée */
+  quiet: { from: string; to: string } | null;
+}
+
+export const DEFAULT_SETTINGS: AlertSettings = { leadMin: 30, minLevel: 'any', quiet: null };
+/** Plage proposée à l'activation de « ne pas déranger ». */
+export const DEFAULT_QUIET = { from: '23:00', to: '07:00' };
+
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export function loadSettings(): AlertSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return { ...DEFAULT_SETTINGS };
+    const v = JSON.parse(raw) as Partial<AlertSettings> & { quiet?: { from?: unknown; to?: unknown } | null };
+    const quiet =
+      v.quiet && typeof v.quiet.from === 'string' && typeof v.quiet.to === 'string' && TIME.test(v.quiet.from) && TIME.test(v.quiet.to)
+        ? { from: v.quiet.from, to: v.quiet.to }
+        : null;
+    return {
+      leadMin: v.leadMin === 15 || v.leadMin === 60 ? v.leadMin : 30,
+      minLevel: v.minLevel === 'moderate' || v.minLevel === 'heavy' ? v.minLevel : 'any',
+      quiet,
+    };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+function saveSettings(settings: AlertSettings): void {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    /* stockage indisponible : les réglages restent valables côté serveur */
+  }
+}
+
+/** Réglages tels qu'envoyés au serveur : la plage silencieuse est liée au fuseau de l'appareil. */
+function serverSettings(settings: AlertSettings): unknown {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  return { leadMin: settings.leadMin, minLevel: settings.minLevel, quiet: settings.quiet ? { ...settings.quiet, timeZone } : null };
+}
+
+/** Phrase résumant les réglages, pour l'affichage. */
+export function describeSettings(settings: AlertSettings): string {
+  const lead = settings.leadMin === 60 ? '1 heure' : `${settings.leadMin} minutes`;
+  const what = { any: 'une pluie', moderate: 'une pluie modérée ou forte', heavy: 'une pluie forte' }[settings.minLevel];
+  const quiet = settings.quiet ? ` Pas de notification de ${settings.quiet.from} à ${settings.quiet.to}.` : '';
+  return `Tu es prévenu quand ${what} commence dans moins de ${lead} (une alerte par épisode).${quiet}`;
 }
 
 export type Support = 'ok' | 'ios-install' | 'unsupported';
@@ -99,7 +158,7 @@ export async function enableAlerts(place: AlertPlace): Promise<void> {
   const subscription =
     (await reg.pushManager.getSubscription()) ??
     (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64urlToBytes(VAPID_PUBLIC_KEY) }));
-  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone });
+  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone, settings: serverSettings(loadSettings()) });
   savePlace(place);
 }
 
@@ -107,8 +166,17 @@ export async function enableAlerts(place: AlertPlace): Promise<void> {
 export async function moveAlerts(place: AlertPlace): Promise<void> {
   const subscription = await currentSubscription();
   if (!subscription) throw new Error('Aucun abonnement actif.');
-  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone });
+  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone, settings: serverSettings(loadSettings()) });
   savePlace(place);
+}
+
+/** Enregistre de nouveaux réglages (sur l'appareil, puis sur le serveur pour le lieu déjà surveillé). */
+export async function updateSettings(settings: AlertSettings): Promise<void> {
+  const place = loadSavedPlace();
+  const subscription = await currentSubscription();
+  if (!place || !subscription) throw new Error('Aucun abonnement actif.');
+  await post('/subscribe', { subscription: subscription.toJSON(), lat: place.lat, lon: place.lon, timezone: place.timezone, settings: serverSettings(settings) });
+  saveSettings(settings);
 }
 
 /** Supprime l'abonnement et la position côté serveur, puis côté navigateur. */

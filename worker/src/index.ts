@@ -1,5 +1,5 @@
-import { buildMessage, decide, parseSlots } from './rain.ts';
-import type { Slot } from './rain.ts';
+import { buildMessage, decide, DEFAULT_SETTINGS, parseSettings, parseSlots } from './rain.ts';
+import type { AlertSettings, Slot } from './rain.ts';
 import { base64urlToBytes, importVapidPrivateKey, sendPush } from './webpush.ts';
 import type { PushTarget } from './webpush.ts';
 
@@ -27,6 +27,8 @@ interface Subscriber extends PushTarget {
   timezone: string;
   /** Pas d'alerte avant cet instant (ms) */
   quietUntil: number;
+  /** Réglages choisis par l'utilisateur (absents pour les abonnés antérieurs : valeurs par défaut) */
+  settings?: AlertSettings;
 }
 
 const STORE_KEY = 'subs';
@@ -171,6 +173,8 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
       timezone: validTimeZone(body.timezone),
       // Nouveau lieu : on repart de zéro pour pouvoir alerter tout de suite.
       quietUntil: moved ? 0 : previous.quietUntil,
+      // Réglages absents de la requête : on garde les précédents.
+      settings: body.settings === undefined ? (previous?.settings ?? { ...DEFAULT_SETTINGS }) : parseSettings(body.settings),
     };
     await saveStore(env, store);
     return json({ ok: true }, 200, cors);
@@ -249,7 +253,7 @@ export async function runAlerts(env: Env, nowMs: number = Date.now(), fetcher: t
     const slots = places.get(`${sub.lat},${sub.lon}`);
     if (!slots) continue; // météo indisponible : on réessaiera au prochain passage
 
-    const decision = decide(slots, nowMs, sub.quietUntil);
+    const decision = decide(slots, nowMs, sub.quietUntil, sub.settings ?? DEFAULT_SETTINGS);
     const previousQuiet = sub.quietUntil;
     if (decision.quietUntil !== previousQuiet) {
       sub.quietUntil = decision.quietUntil;

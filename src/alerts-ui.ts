@@ -1,14 +1,18 @@
 import {
   alertsSupport,
   currentSubscription,
+  DEFAULT_QUIET,
+  describeSettings,
   disableAlerts,
   enableAlerts,
   loadSavedPlace,
+  loadSettings,
   moveAlerts,
   samePlace,
   sendTest,
+  updateSettings,
 } from './alerts.ts';
-import type { AlertPlace } from './alerts.ts';
+import type { AlertPlace, AlertSettings } from './alerts.ts';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -26,6 +30,71 @@ function button(label: string, onClick: () => void, secondary = false): HTMLButt
   b.type = 'button';
   b.addEventListener('click', onClick);
   return b;
+}
+
+function select<T extends string>(
+  label: string,
+  options: [T, string][],
+  value: T,
+  onChange: (value: T) => void,
+): HTMLElement {
+  const row = el('label', 'alerts-field');
+  const field = el('select');
+  for (const [v, text] of options) {
+    const option = el('option', undefined, text);
+    option.value = v;
+    field.append(option);
+  }
+  field.value = value;
+  field.addEventListener('change', () => onChange(field.value as T));
+  row.append(el('span', undefined, label), field);
+  return row;
+}
+
+/** Bloc de réglages : délai, intensité minimale, plage « ne pas déranger ». */
+function settingsBlock(settings: AlertSettings, apply: (next: AlertSettings) => void): HTMLElement {
+  const block = el('div', 'alerts-settings');
+  block.append(
+    select<'15' | '30' | '60'>(
+      'Prévenir',
+      [['15', '15 min avant'], ['30', '30 min avant'], ['60', '1 h avant']],
+      String(settings.leadMin) as '15' | '30' | '60',
+      (v) => apply({ ...settings, leadMin: Number(v) as AlertSettings['leadMin'] }),
+    ),
+    select(
+      'Pluie à partir de',
+      [['any', 'Toute pluie'], ['moderate', 'Modérée'], ['heavy', 'Forte']],
+      settings.minLevel,
+      (minLevel) => apply({ ...settings, minLevel }),
+    ),
+  );
+
+  const quiet = el('div', 'alerts-quiet');
+  const toggle = el('label', 'alerts-field');
+  const box = el('input');
+  box.type = 'checkbox';
+  box.checked = settings.quiet !== null;
+  box.addEventListener('change', () => apply({ ...settings, quiet: box.checked ? { ...DEFAULT_QUIET } : null }));
+  toggle.append(el('span', undefined, 'Ne pas déranger'), box);
+  quiet.append(toggle);
+  if (settings.quiet) {
+    const current = settings.quiet;
+    const time = (label: string, key: 'from' | 'to'): HTMLElement => {
+      const row = el('label', 'alerts-field');
+      const input = el('input');
+      input.type = 'time';
+      input.required = true;
+      input.value = current[key];
+      input.addEventListener('change', () => {
+        if (input.value) apply({ ...settings, quiet: { ...current, [key]: input.value } });
+      });
+      row.append(el('span', undefined, label), input);
+      return row;
+    };
+    quiet.append(time('De', 'from'), time('À', 'to'));
+  }
+  block.append(quiet);
+  return block;
 }
 
 /** Section « Alertes de pluie » : activer, tester, changer de lieu, désactiver. */
@@ -67,7 +136,13 @@ export function renderAlerts(current: AlertPlace): HTMLElement {
       const subscription = await currentSubscription();
       if (saved && subscription) {
         note(`Alertes actives pour : ${saved.name}.`);
-        note('Tu es prévenu quand la pluie commence dans les 30 minutes (une alerte par épisode de pluie).', 'alerts-sub');
+        const settings = loadSettings();
+        note(describeSettings(settings), 'alerts-sub');
+        parts.push(
+          settingsBlock(settings, (next) =>
+            void run(async () => (await updateSettings(next), 'Réglages enregistrés.')),
+          ),
+        );
         const row = el('div', 'alerts-actions');
         if (!samePlace(saved, current)) {
           row.append(button(`Surveiller ${current.name}`, () => void run(async () => (await moveAlerts(current), `Alertes déplacées vers ${current.name}.`))));
@@ -78,7 +153,7 @@ export function renderAlerts(current: AlertPlace): HTMLElement {
         );
         parts.push(row);
       } else {
-        note('Reçois une notification quand la pluie commence dans les 30 minutes.');
+        note('Reçois une notification quand la pluie commence bientôt. Tu pourras régler le délai, l’intensité et les heures de silence.');
         note('Ta position (arrondie à environ 1 km) est enregistrée sur un petit serveur gratuit pour surveiller la météo. Tu peux tout supprimer en désactivant les alertes.', 'alerts-sub');
         parts.push(button(`Activer pour ${current.name}`, () => void run(async () => (await enableAlerts(current), 'Alertes activées.'))));
       }
@@ -86,7 +161,7 @@ export function renderAlerts(current: AlertPlace): HTMLElement {
 
     if (message) parts.push(el('p', 'alerts-message', message));
     card.replaceChildren(...parts);
-    card.querySelectorAll('button').forEach((b) => (b.disabled = busy));
+    card.querySelectorAll('button, select, input').forEach((b) => ((b as HTMLButtonElement).disabled = busy));
   }
 
   void refresh();
