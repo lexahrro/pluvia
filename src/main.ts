@@ -18,6 +18,11 @@ import { renderAlerts } from './alerts-ui.ts';
 import { renderConditions } from './metrics.ts';
 import { renderSun } from './sun.ts';
 import { formatDeviceTime, formatTime, setDisplayTimeZone } from './time.ts';
+import { fetchDays } from './days.ts';
+import { loadDays, saveDays } from './days-cache.ts';
+import { renderDays } from './days-ui.ts';
+import { createTabBar } from './tabs.ts';
+import type { TabBar, View } from './tabs.ts';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -27,6 +32,19 @@ let radar: RadarHandle | undefined;
 let selection: Selection = loadSelection();
 /** Numéro du chargement en cours : un chargement plus ancien ne doit plus rien afficher. */
 let loadToken = 0;
+/** Écran affiché : « Aujourd'hui » (prévision de pluie) ou « Jours » (prévisions par jour). */
+let view: View = 'today';
+
+/** Lieu de l'écran en cours, pour charger l'écran « Jours » seulement quand on l'ouvre. */
+interface DaysContext {
+  position: Position;
+  key: string;
+  loaded: boolean;
+}
+let daysContext: DaysContext | undefined;
+let todayPane: HTMLElement | undefined;
+let daysPane: HTMLElement | undefined;
+let tabBar: TabBar | undefined;
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -55,18 +73,68 @@ function choose(next: Selection): void {
   void load();
 }
 
+function showView(next: View): void {
+  view = next;
+  if (todayPane) todayPane.hidden = next !== 'today';
+  if (daysPane) daysPane.hidden = next !== 'days';
+  tabBar?.set(next);
+  window.scrollTo(0, 0);
+  if (next === 'days') void ensureDays();
+}
+
 function renderShell(): { content: HTMLElement; topBar: TopBar } {
   app.replaceChildren();
   const main = el('main', 'screen');
   const content = el('div', 'content');
+  const days = el('div', 'content');
+  days.append(el('p', 'status', 'Chargement des prévisions…'));
   const topBar = createTopBar(selection, selectionLabel(selection), choose);
+  todayPane = content;
+  daysPane = days;
+  tabBar = createTabBar(view, showView);
+  content.hidden = view !== 'today';
+  days.hidden = view !== 'days';
   main.append(
     topBar.element,
     content,
+    days,
     el('footer', 'footer', 'Météo, lieux et qualité de l\u2019air : Open-Meteo.com (CC BY 4.0) · données air : CAMS'),
   );
-  app.append(main);
+  app.append(main, tabBar.element);
   return { content, topBar };
+}
+
+/** Charge et affiche l'écran « Jours » pour le lieu en cours (une seule fois par chargement du lieu). */
+async function ensureDays(): Promise<void> {
+  const context = daysContext;
+  const pane = daysPane;
+  if (!context || !pane || context.loaded) return;
+  context.loaded = true;
+  pane.replaceChildren(el('p', 'status', 'Chargement des prévisions…'));
+
+  const refresh = el('button', 'retry', 'Actualiser');
+  refresh.addEventListener('click', () => void load());
+
+  try {
+    const data = await fetchDays(context.position.lat, context.position.lon);
+    if (context !== daysContext) return;
+    saveDays(context.key, data);
+    pane.replaceChildren(renderDays(data), refresh);
+  } catch (err) {
+    if (context !== daysContext) return;
+    const cached = loadDays(context.key);
+    if (cached) {
+      pane.replaceChildren(
+        el('p', 'offline', `Hors ligne : dernières données reçues à ${formatDeviceTime(cached.savedAt)}. Elles peuvent ne plus être à jour.`),
+        renderDays(cached.forecast),
+        refresh,
+      );
+    } else {
+      const isNetwork = (err as Error | undefined)?.name === 'TypeError';
+      const message = isNetwork ? 'Vérifie ta connexion internet.' : err instanceof Error ? err.message : 'Erreur inconnue.';
+      pane.replaceChildren(el('p', 'status error', `Impossible de charger les prévisions. ${message}`), refresh);
+    }
+  }
 }
 
 function renderDetails(slots: RainSlot[]): HTMLElement {
@@ -160,6 +228,7 @@ async function load(): Promise<void> {
   const token = ++loadToken;
   radar?.destroy();
   radar = undefined;
+  daysContext = undefined;
   const { content, topBar } = renderShell();
   setMood('none');
 
@@ -174,6 +243,9 @@ async function load(): Promise<void> {
     topBar.setLabel(selectionLabel(selection, position));
   }
   content.replaceChildren(el('p', 'status', 'Chargement des prévisions…'));
+  // L'écran « Jours » ne se charge que si on l'ouvre (tout de suite s'il est déjà affiché).
+  daysContext = { position, key, loaded: false };
+  if (view === 'days') void ensureDays();
 
   let updatedAt: Date | undefined;
   try {

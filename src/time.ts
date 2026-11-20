@@ -45,6 +45,16 @@ export function formatWeekday(date: Date): string {
   return formatter('weekday', { weekday: 'short' }, zone).format(date);
 }
 
+/** « vendredi » dans le fuseau du lieu. */
+export function formatWeekdayLong(date: Date): string {
+  return formatter('weekday-long', { weekday: 'long' }, zone).format(date);
+}
+
+/** « 21 nov. » dans le fuseau du lieu. */
+export function formatDayMonth(date: Date): string {
+  return formatter('day-month', { day: 'numeric', month: 'short' }, zone).format(date);
+}
+
 interface LocalParts {
   year: number;
   month: number;
