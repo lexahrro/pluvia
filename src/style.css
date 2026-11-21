@@ -589,15 +589,29 @@ html.modal-open {
   font-size: 0.7rem;
 }
 
-.details {
-  margin-bottom: 1rem;
+.details-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.6rem 0 0.2rem;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
   color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
-.details summary {
-  cursor: pointer;
-  padding: 0.25rem 0;
-  font-size: 0.9rem;
+.details-toggle[aria-expanded='true'] .caret {
+  transform: rotate(180deg);
+}
+
+.slots-panel {
+  margin: -0.5rem 0 1rem;
 }
 
 .where {
@@ -1208,4 +1222,8 @@ html.modal-open {
 
 .content > .alerts:first-child {
   margin-top: 0;
+}
+
+.details-toggle .caret {
+  transition: transform 0.15s;
 }

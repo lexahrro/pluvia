@@ -15,6 +15,7 @@ import type { Selection } from './places.ts';
 import { createTopBar } from './picker.ts';
 import type { TopBar } from './picker.ts';
 import { renderAlerts } from './alerts-ui.ts';
+import { icon } from './icons.ts';
 import { renderConditions } from './metrics.ts';
 import { renderSun } from './sun.ts';
 import { formatDeviceTime, formatTime, setDisplayTimeZone } from './time.ts';
@@ -144,9 +145,14 @@ async function ensureDays(): Promise<void> {
   }
 }
 
-function renderDetails(slots: RainSlot[]): HTMLElement {
-  const details = el('details', 'details');
-  details.append(el('summary', undefined, 'Détail par créneau'));
+/**
+ * Bouton « Détail par créneau » (au pied du bloc du graphique) et liste des créneaux,
+ * qui s'ouvre juste en dessous du bloc.
+ */
+function renderDetails(slots: RainSlot[]): { toggle: HTMLButtonElement; panel: HTMLElement } {
+  const panel = el('div', 'slots-panel');
+  panel.id = 'slots-panel';
+  panel.hidden = true;
   const list = el('ul', 'slots');
   for (const slot of slots) {
     const level = rainLevel(slot.mm);
@@ -158,8 +164,18 @@ function renderDetails(slots: RainSlot[]): HTMLElement {
     );
     list.append(li);
   }
-  details.append(list);
-  return details;
+  panel.append(list);
+
+  const toggle = el('button', 'details-toggle');
+  toggle.type = 'button';
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-controls', panel.id);
+  toggle.append('Détail par créneau', icon('chevron-down', 'caret'));
+  toggle.addEventListener('click', () => {
+    panel.hidden = !panel.hidden;
+    toggle.setAttribute('aria-expanded', String(!panel.hidden));
+  });
+  return { toggle, panel };
 }
 
 function renderForecast(
@@ -196,7 +212,8 @@ function renderForecast(
   hero.append(el('p', 'headline', summary.headline), el('p', 'detail', summary.detail));
 
   const chartCard = el('section', 'chart-card');
-  chartCard.append(renderChart(slots), el('p', 'caption', 'Pluie prévue, par tranches de 15 minutes'));
+  const details = renderDetails(slots);
+  chartCard.append(renderChart(slots), el('p', 'caption', 'Pluie prévue, par tranches de 15 minutes'), details.toggle);
 
   const hourlySection = el('section', 'hourly');
   hourlySection.append(el('h2', undefined, 'Prochaines 48 heures'), renderHourly(forecast.hours));
@@ -205,7 +222,7 @@ function renderForecast(
   radarSection.append(el('h2', undefined, 'Radar : les 2 dernières heures'));
 
   // Ordre d'affichage : pluie prévue, détail par créneau, radar, conditions actuelles, prochaines 48 h, soleil.
-  content.append(hero, chartCard, renderDetails(slots), radarSection);
+  content.append(hero, chartCard, details.panel, radarSection);
   const conditions = renderConditions(forecast.current, forecast.uvMaxToday, forecast.hours, forecast.rainTodayMm, forecast.air);
   if (conditions) content.append(conditions);
   content.append(hourlySection);
