@@ -204,14 +204,13 @@ function renderForecast(
   const radarSection = el('section', 'radar');
   radarSection.append(el('h2', undefined, 'Radar : les 2 dernières heures'));
 
-  // Ordre d'affichage : pluie prévue, radar, conditions actuelles, prochaines 48 h, soleil.
-  content.append(hero, chartCard, radarSection);
+  // Ordre d'affichage : pluie prévue, détail par créneau, radar, conditions actuelles, prochaines 48 h, soleil.
+  content.append(hero, chartCard, renderDetails(slots), radarSection);
   const conditions = renderConditions(forecast.current, forecast.uvMaxToday, forecast.hours, forecast.rainTodayMm, forecast.air);
   if (conditions) content.append(conditions);
   content.append(hourlySection);
   const sun = renderSun(forecast.sun);
   if (sun) content.append(sun);
-  content.append(renderDetails(slots));
   // Les alertes vivent dans leur propre onglet ; elles ont besoin du fuseau du lieu, connu avec la prévision.
   alertsPane?.replaceChildren(
     renderAlerts({
