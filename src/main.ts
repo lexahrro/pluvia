@@ -44,6 +44,7 @@ interface DaysContext {
 let daysContext: DaysContext | undefined;
 let todayPane: HTMLElement | undefined;
 let daysPane: HTMLElement | undefined;
+let alertsPane: HTMLElement | undefined;
 let tabBar: TabBar | undefined;
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -77,6 +78,7 @@ function showView(next: View): void {
   view = next;
   if (todayPane) todayPane.hidden = next !== 'today';
   if (daysPane) daysPane.hidden = next !== 'days';
+  if (alertsPane) alertsPane.hidden = next !== 'alerts';
   tabBar?.set(next);
   window.scrollTo(0, 0);
   if (next === 'days') void ensureDays();
@@ -88,16 +90,21 @@ function renderShell(): { content: HTMLElement; topBar: TopBar } {
   const content = el('div', 'content');
   const days = el('div', 'content');
   days.append(el('p', 'status', 'Chargement des prévisions…'));
+  const alerts = el('div', 'content');
+  alerts.append(el('p', 'status', 'Chargement…'));
   const topBar = createTopBar(selection, selectionLabel(selection), choose);
   todayPane = content;
   daysPane = days;
+  alertsPane = alerts;
   tabBar = createTabBar(view, showView);
   content.hidden = view !== 'today';
   days.hidden = view !== 'days';
+  alerts.hidden = view !== 'alerts';
   main.append(
     topBar.element,
     content,
     days,
+    alerts,
     el('footer', 'footer', 'Météo, lieux et qualité de l\u2019air : Open-Meteo.com (CC BY 4.0) · données air : CAMS'),
   );
   app.append(main, tabBar.element);
@@ -205,7 +212,8 @@ function renderForecast(
   const sun = renderSun(forecast.sun);
   if (sun) content.append(sun);
   content.append(renderDetails(slots));
-  content.append(
+  // Les alertes vivent dans leur propre onglet ; elles ont besoin du fuseau du lieu, connu avec la prévision.
+  alertsPane?.replaceChildren(
     renderAlerts({
       lat: position.lat,
       lon: position.lon,
@@ -277,6 +285,16 @@ async function load(): Promise<void> {
           : 'Erreur inconnue.';
       content.replaceChildren(el('p', 'status error', `Impossible de charger les prévisions. ${message}`));
     }
+  }
+
+  // Sans prévision (ni réseau ni cache), on ne connaît pas le fuseau du lieu : pas d'alertes pour l'instant.
+  if (alertsPane && alertsPane.querySelector('.alerts') === null) {
+    const again = el('button', 'retry', 'Actualiser');
+    again.addEventListener('click', () => void load());
+    alertsPane.replaceChildren(
+      el('p', 'status', 'Les alertes seront disponibles dès que les prévisions auront pu être chargées.'),
+      again,
+    );
   }
 
   lastLoadAt = Date.now();

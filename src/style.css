@@ -1205,3 +1205,7 @@ html.modal-open {
   min-height: 1rem;
   font-size: 0.7rem;
 }
+
+.content > .alerts:first-child {
+  margin-top: 0;
+}

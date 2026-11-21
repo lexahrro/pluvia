@@ -5,7 +5,7 @@
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-export type IconName = 'location-arrow' | 'bars' | 'chevron-down' | 'drop' | 'calendar';
+export type IconName = 'location-arrow' | 'bars' | 'chevron-down' | 'drop' | 'calendar' | 'bell';
 
 /** Tracés dans une grille de 24 x 24. */
 const PATHS: Record<IconName, { d: string; filled: boolean }> = {
@@ -18,6 +18,8 @@ const PATHS: Record<IconName, { d: string; filled: boolean }> = {
   // Goutte : l'écran « Aujourd'hui » (pluie prévue).
   drop: { d: 'M12 3 C8 8.5 5.5 11.5 5.5 15 a6.5 6.5 0 0 0 13 0 C18.5 11.5 16 8.5 12 3 Z', filled: true },
   // Calendrier : l'écran « Jours ».
+  // Cloche : l'écran « Alertes ».
+  bell: { d: 'M6 16 V11 a6 6 0 0 1 12 0 V16 L19.5 18 H4.5 Z M10 20.5 a2 2 0 0 0 4 0', filled: false },
   calendar: { d: 'M4 6 H20 V20 H4 Z M4 10.5 H20 M8.5 3.5 V7.5 M15.5 3.5 V7.5', filled: false },
 };
 

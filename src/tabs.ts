@@ -1,7 +1,7 @@
 import { icon } from './icons.ts';
 import type { IconName } from './icons.ts';
 
-export type View = 'today' | 'days';
+export type View = 'today' | 'days' | 'alerts';
 
 export interface TabBar {
   element: HTMLElement;
@@ -11,9 +11,10 @@ export interface TabBar {
 const TABS: { view: View; label: string; icon: IconName }[] = [
   { view: 'today', label: 'Aujourd’hui', icon: 'drop' },
   { view: 'days', label: 'Jours', icon: 'calendar' },
+  { view: 'alerts', label: 'Alertes', icon: 'bell' },
 ];
 
-/** Barre d'onglets fixée en bas de l'écran : « Aujourd'hui » (écran principal) et « Jours » (prévisions par jour). */
+/** Barre d'onglets fixée en bas de l'écran : « Aujourd'hui » (écran principal), « Jours » (prévisions par jour) et « Alertes » (notifications de pluie). */
 export function createTabBar(current: View, onChange: (view: View) => void): TabBar {
   const nav = document.createElement('nav');
   nav.className = 'tabbar';
