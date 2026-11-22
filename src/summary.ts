@@ -2,8 +2,8 @@ import { formatTime } from './time.ts';
 import { RAIN_LABELS, rainLevel } from './weather.ts';
 import type { RainLevel, RainSlot } from './weather.ts';
 
-/** Nombre de créneaux de 15 minutes affichés et analysés (8 x 15 min = 2 h). */
-export const HORIZON_SLOTS = 8;
+/** Nombre de créneaux de 15 minutes affichés et analysés (16 x 15 min = 4 h). */
+export const HORIZON_SLOTS = 16;
 
 export interface RainSummary {
   headline: string;

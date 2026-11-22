@@ -42,6 +42,8 @@ export function renderChart(slots: RainSlot[]): SVGSVGElement {
 
   const slotWidth = (WIDTH - 2 * PADDING_X) / Math.max(slots.length, 1);
   const barWidth = slotWidth * 0.7;
+  // Une étiquette toutes les 30 min sur 2 h, toutes les heures au-delà (sinon les heures se chevauchent).
+  const labelStep = slots.length > 8 ? 4 : 2;
 
   slots.forEach((slot, i) => {
     const level = rainLevel(slot.mm);
@@ -61,7 +63,7 @@ export function renderChart(slots: RainSlot[]): SVGSVGElement {
     rect.append(title);
     svg.append(rect);
 
-    if (i % 2 === 0) {
+    if (i % labelStep === 0) {
       const label = svgEl('text', {
         x: (x + barWidth / 2).toFixed(1),
         y: BASELINE + 22,
