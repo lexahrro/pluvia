@@ -9,12 +9,12 @@ import type { Position } from './location.ts';
  * C'est une prévision de modèle, pas une mesure : moins nette qu'un radar, et les averses peuvent être décalées.
  */
 
-/** La grille fait GRID_N x GRID_N points, espacés de GRID_SPACING_KM : environ 50 km autour de la position. */
-export const GRID_N = 10;
-export const GRID_SPACING_KM = 10;
+/** La grille fait GRID_N x GRID_N points, espacés de GRID_SPACING_KM : environ 160 km autour de la position. */
+export const GRID_N = 16;
+export const GRID_SPACING_KM = 20;
 /** 16 créneaux de 15 minutes = 4 heures. */
 export const NOWCAST_SLOTS = 16;
-const IMAGE_SIZE = 160;
+const IMAGE_SIZE = 256;
 const SLOT_SECONDS = 15 * 60;
 const KM_PER_DEGREE = 111.32;
 const URL_BASE = 'https://api.open-meteo.com/v1/forecast';
