@@ -2,6 +2,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Position } from './location.ts';
 import { formatTime } from './time.ts';
+import { fetchNowcast, type Nowcast } from './nowcast.ts';
 
 /** Image radar : horodatage (secondes UNIX) et chemin fournis par RainViewer. */
 export interface RadarFrame {
@@ -56,6 +57,22 @@ export function frameLabel(frame: RadarFrame, now: Date = new Date()): string {
   return `${formatTime(at)} · ${ago}`;
 }
 
+/** Libellé d'une image de prévision : début du créneau de 15 minutes et délai avant celui-ci. */
+export function forecastLabel(startSec: number, now: Date = new Date()): string {
+  const at = new Date(startSec * 1000);
+  const minutes = Math.round((at.getTime() - now.getTime()) / 60_000);
+  const when = minutes < 2 ? 'maintenant' : `dans ${minutes} min`;
+  return `Prévision · ${formatTime(at)} · ${when}`;
+}
+
+/** Données partagées par l'aperçu et la fenêtre : radar passé (RainViewer) et prévision (modèle, facultative). */
+export interface RadarData {
+  index: RadarIndex;
+  nowcast: Nowcast | null;
+}
+
+type Fade = { setOpacity(opacity: number): unknown };
+
 export interface RadarHandle {
   destroy(): void;
 }
@@ -85,7 +102,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 function createView(
   container: HTMLElement,
   position: Position,
-  indexPromise: Promise<RadarIndex>,
+  dataPromise: Promise<RadarData>,
   interactive: boolean,
 ): RadarView {
   const mapEl = el('div', 'map');
@@ -137,12 +154,15 @@ function createView(
     fillOpacity: 1,
   }).addTo(map);
 
-  map.attributionControl.addAttribution('Radar © <a href="https://www.rainviewer.com/">RainViewer</a>');
+  map.attributionControl.addAttribution(
+    'Radar © <a href="https://www.rainviewer.com/">RainViewer</a> · Prévision © <a href="https://open-meteo.com/">Open-Meteo</a>',
+  );
 
   let destroyed = false;
   let timer: number | undefined;
-  let layers: L.TileLayer[] = [];
-  let frames: RadarFrame[] = [];
+  let layers: Fade[] = [];
+  let labels: string[] = [];
+  let forecastFrom = Infinity; // indice de la première image de prévision
   let current = 0;
   let playing = false;
 
@@ -152,13 +172,14 @@ function createView(
     current = index;
     layers[current].setOpacity(RADAR_OPACITY);
     slider.value = String(index);
-    label.textContent = frameLabel(frames[index]);
+    label.textContent = labels[index];
+    label.classList.toggle('is-forecast', index >= forecastFrom);
   }
 
   function schedule(): void {
     window.clearTimeout(timer);
     if (!playing || destroyed) return;
-    const atEnd = current === frames.length - 1;
+    const atEnd = current === layers.length - 1;
     timer = window.setTimeout(() => {
       show(atEnd ? 0 : current + 1);
       schedule();
@@ -179,13 +200,13 @@ function createView(
     });
   }
 
-  indexPromise
-    .then(({ host, frames: list }) => {
+  dataPromise
+    .then(({ index, nowcast }) => {
       if (destroyed) return;
-      frames = list;
+      const now = new Date();
       // Toutes les images sont préchargées, superposées et invisibles ; on n'affiche que l'active.
-      layers = frames.map((frame) =>
-        L.tileLayer(tileUrl(host, frame), {
+      layers = index.frames.map((frame) =>
+        L.tileLayer(tileUrl(index.host, frame), {
           opacity: 0,
           maxNativeZoom: RADAR_MAX_NATIVE_ZOOM,
           maxZoom: 10,
@@ -193,12 +214,23 @@ function createView(
           updateWhenZooming: false,
         }).addTo(map),
       );
-      slider.max = String(frames.length - 1);
+      labels = index.frames.map((frame) => frameLabel(frame, now));
+      const lastPast = layers.length - 1;
+      if (nowcast) {
+        forecastFrom = layers.length;
+        for (const frame of nowcast.frames) {
+          layers.push(
+            L.imageOverlay(frame.url, nowcast.bounds, { opacity: 0, className: 'nowcast-image', interactive: false }).addTo(map),
+          );
+          labels.push(forecastLabel(frame.start, now));
+        }
+      }
+      slider.max = String(layers.length - 1);
       slider.disabled = false;
-      current = frames.length - 1;
+      current = lastPast;
       layers[current].setOpacity(RADAR_OPACITY);
       slider.value = String(current);
-      label.textContent = frameLabel(frames[current]);
+      label.textContent = labels[current];
 
       const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       if (!reduceMotion) {
@@ -235,14 +267,17 @@ function createView(
  * interactive et la barre de défilement. Ne lève jamais d'erreur.
  */
 export function mountRadar(container: HTMLElement, position: Position): RadarHandle {
-  // Les index RainViewer ne sont demandés qu'une fois, pour l'aperçu comme pour la fenêtre.
-  const indexPromise = fetchRadarIndex();
-  indexPromise.catch(() => undefined);
+  // Radar passé et prévision ne sont demandés qu'une fois, pour l'aperçu comme pour la fenêtre.
+  // La prévision est facultative : si elle échoue, le radar reste celui des 2 dernières heures.
+  const dataPromise: Promise<RadarData> = Promise.all([fetchRadarIndex(), fetchNowcast(position)]).then(
+    ([index, nowcast]) => ({ index, nowcast }),
+  );
+  dataPromise.catch(() => undefined);
 
   // L'aperçu doit être dans la page AVANT de créer la carte : Leaflet mesure alors la bonne taille.
   const preview = el('div', 'radar-preview');
   container.append(preview);
-  const previewView = createView(preview, position, indexPromise, false);
+  const previewView = createView(preview, position, dataPromise, false);
   const openBtn = el('button', 'radar-open');
   openBtn.type = 'button';
   openBtn.setAttribute('aria-label', 'Ouvrir le radar en grand');
@@ -272,7 +307,7 @@ export function mountRadar(container: HTMLElement, position: Position): RadarHan
     const close = el('button', 'radar-close', '✕');
     close.type = 'button';
     close.setAttribute('aria-label', 'Fermer le radar');
-    bar.append(el('h2', undefined, 'Radar : les 2 dernières heures'), close);
+    bar.append(el('h2', undefined, 'Radar : passé et prévision'), close);
     const body = el('div', 'radar-dialog-body');
     dialog.append(bar, body);
     document.body.append(dialog);
@@ -281,7 +316,7 @@ export function mountRadar(container: HTMLElement, position: Position): RadarHan
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
 
-    const view = createView(body, position, indexPromise, true);
+    const view = createView(body, position, dataPromise, true);
     modal = { dialog, view };
     // Une fois la fenêtre affichée, Leaflet doit recalculer la taille de sa carte.
     window.requestAnimationFrame(() => view.invalidate());

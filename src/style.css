@@ -507,7 +507,7 @@ html.modal-open {
 
 .radar-time {
   flex: 0 0 auto;
-  max-width: 11rem;
+  max-width: 14rem;
   color: var(--muted);
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
@@ -1226,4 +1226,14 @@ html.modal-open {
 
 .details-toggle .caret {
   transition: transform 0.15s;
+}
+
+/* Images de prévision : un peu de flou pour adoucir la grille du modèle */
+.nowcast-image {
+  image-rendering: auto;
+  filter: blur(2px);
+}
+.radar-badge.is-forecast,
+.radar-time.is-forecast {
+  color: #ffd180;
 }
