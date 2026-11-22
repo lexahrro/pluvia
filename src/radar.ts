@@ -65,11 +65,19 @@ export function forecastLabel(startSec: number, now: Date = new Date()): string 
   return `Prévision · ${formatTime(at)} · ${when}`;
 }
 
-/** Données partagées par l'aperçu et la fenêtre : radar passé (RainViewer) et prévision (modèle, facultative). */
+/** Deux cartes distinctes : le radar mesuré (2 dernières heures) et la prévision du modèle (4 prochaines heures). */
+export type RadarKind = 'past' | 'forecast';
+
+/** Données d'une carte : images radar (passé) ou images de prévision. */
 export interface RadarData {
-  index: RadarIndex;
-  nowcast: Nowcast | null;
+  index?: RadarIndex;
+  nowcast?: Nowcast;
 }
+
+const DIALOG_TITLES: Record<RadarKind, string> = {
+  past: 'Radar : les 2 dernières heures',
+  forecast: 'Prévision : les 4 prochaines heures',
+};
 
 type Fade = { setOpacity(opacity: number): unknown };
 
@@ -100,6 +108,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
  * Ne lève jamais d'erreur : en cas de problème, affiche un message.
  */
 function createView(
+  kind: RadarKind,
   container: HTMLElement,
   position: Position,
   dataPromise: Promise<RadarData>,
@@ -155,15 +164,16 @@ function createView(
   }).addTo(map);
 
   map.attributionControl.addAttribution(
-    'Radar © <a href="https://www.rainviewer.com/">RainViewer</a> · Prévision © <a href="https://open-meteo.com/">Open-Meteo</a>',
+    kind === 'past'
+      ? 'Radar © <a href="https://www.rainviewer.com/">RainViewer</a>'
+      : 'Prévision du modèle © <a href="https://open-meteo.com/">Open-Meteo</a>',
   );
 
   let destroyed = false;
   let timer: number | undefined;
   let layers: Fade[] = [];
   let labels: string[] = [];
-  let forecastFrom = Infinity; // indice de la première image de prévision
-  let current = 0;
+    let current = 0;
   let playing = false;
 
   function show(index: number): void {
@@ -173,7 +183,6 @@ function createView(
     layers[current].setOpacity(RADAR_OPACITY);
     slider.value = String(index);
     label.textContent = labels[index];
-    label.classList.toggle('is-forecast', index >= forecastFrom);
   }
 
   function schedule(): void {
@@ -204,30 +213,30 @@ function createView(
     .then(({ index, nowcast }) => {
       if (destroyed) return;
       const now = new Date();
-      // Toutes les images sont préchargées, superposées et invisibles ; on n'affiche que l'active.
-      layers = index.frames.map((frame) =>
-        L.tileLayer(tileUrl(index.host, frame), {
-          opacity: 0,
-          maxNativeZoom: RADAR_MAX_NATIVE_ZOOM,
-          maxZoom: 10,
-          keepBuffer: 1,
-          updateWhenZooming: false,
-        }).addTo(map),
-      );
-      labels = index.frames.map((frame) => frameLabel(frame, now));
-      const lastPast = layers.length - 1;
-      if (nowcast) {
-        forecastFrom = layers.length;
-        for (const frame of nowcast.frames) {
-          layers.push(
-            L.imageOverlay(frame.url, nowcast.bounds, { opacity: 0, className: 'nowcast-image', interactive: false }).addTo(map),
-          );
-          labels.push(forecastLabel(frame.start, now));
-        }
+      if (kind === 'past' && index) {
+        // Toutes les images sont préchargées, superposées et invisibles ; on n'affiche que l'active.
+        layers = index.frames.map((frame) =>
+          L.tileLayer(tileUrl(index.host, frame), {
+            opacity: 0,
+            maxNativeZoom: RADAR_MAX_NATIVE_ZOOM,
+            maxZoom: 10,
+            keepBuffer: 1,
+            updateWhenZooming: false,
+          }).addTo(map),
+        );
+        labels = index.frames.map((frame) => frameLabel(frame, now));
+      } else if (kind === 'forecast' && nowcast) {
+        layers = nowcast.frames.map((frame) =>
+          L.imageOverlay(frame.url, nowcast.bounds, { opacity: 0, className: 'nowcast-image', interactive: false }).addTo(map),
+        );
+        labels = nowcast.frames.map((frame) => forecastLabel(frame.start, now));
+      } else {
+        throw new Error(kind === 'past' ? '' : 'Le modèle ne répond pas.');
       }
       slider.max = String(layers.length - 1);
       slider.disabled = false;
-      current = lastPast;
+      // Radar passé : on s'arrête sur la plus récente ; prévision : on commence à « maintenant ».
+      current = kind === 'past' ? layers.length - 1 : 0;
       layers[current].setOpacity(RADAR_OPACITY);
       slider.value = String(current);
       label.textContent = labels[current];
@@ -240,7 +249,8 @@ function createView(
     })
     .catch((err: unknown) => {
       if (destroyed) return;
-      label.textContent = err instanceof Error ? `Radar indisponible. ${err.message}` : 'Radar indisponible.';
+      const what = kind === 'past' ? 'Radar' : 'Prévision';
+      label.textContent = err instanceof Error && err.message ? `${what} indisponible. ${err.message}` : `${what} indisponible.`;
       playBtn.disabled = true;
     });
 
@@ -266,21 +276,21 @@ function createView(
  * (le défilement de la page ne déplace pas la carte). Un clic ouvre une fenêtre avec la carte
  * interactive et la barre de défilement. Ne lève jamais d'erreur.
  */
-export function mountRadar(container: HTMLElement, position: Position): RadarHandle {
-  // Radar passé et prévision ne sont demandés qu'une fois, pour l'aperçu comme pour la fenêtre.
-  // La prévision est facultative : si elle échoue, le radar reste celui des 2 dernières heures.
-  const dataPromise: Promise<RadarData> = Promise.all([fetchRadarIndex(), fetchNowcast(position)]).then(
-    ([index, nowcast]) => ({ index, nowcast }),
-  );
+export function mountRadar(container: HTMLElement, position: Position, kind: RadarKind = 'past'): RadarHandle {
+  // Les données ne sont demandées qu'une fois, pour l'aperçu comme pour la fenêtre.
+  const dataPromise: Promise<RadarData> =
+    kind === 'past'
+      ? fetchRadarIndex().then((index) => ({ index }))
+      : fetchNowcast(position).then((nowcast) => (nowcast ? { nowcast } : {}));
   dataPromise.catch(() => undefined);
 
   // L'aperçu doit être dans la page AVANT de créer la carte : Leaflet mesure alors la bonne taille.
   const preview = el('div', 'radar-preview');
   container.append(preview);
-  const previewView = createView(preview, position, dataPromise, false);
+  const previewView = createView(kind, preview, position, dataPromise, false);
   const openBtn = el('button', 'radar-open');
   openBtn.type = 'button';
-  openBtn.setAttribute('aria-label', 'Ouvrir le radar en grand');
+  openBtn.setAttribute('aria-label', kind === 'past' ? 'Ouvrir le radar en grand' : 'Ouvrir la prévision en grand');
   openBtn.append(el('span', 'radar-open-hint', '⤢ Agrandir'));
   preview.append(openBtn);
 
@@ -302,12 +312,12 @@ export function mountRadar(container: HTMLElement, position: Position): RadarHan
   function openModal(): void {
     if (modal) return;
     const dialog = el('dialog', 'radar-dialog');
-    dialog.setAttribute('aria-label', 'Radar de précipitations');
+    dialog.setAttribute('aria-label', DIALOG_TITLES[kind]);
     const bar = el('div', 'radar-dialog-bar');
     const close = el('button', 'radar-close', '✕');
     close.type = 'button';
     close.setAttribute('aria-label', 'Fermer le radar');
-    bar.append(el('h2', undefined, 'Radar : passé et prévision'), close);
+    bar.append(el('h2', undefined, DIALOG_TITLES[kind]), close);
     const body = el('div', 'radar-dialog-body');
     dialog.append(bar, body);
     document.body.append(dialog);
@@ -316,7 +326,7 @@ export function mountRadar(container: HTMLElement, position: Position): RadarHan
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
 
-    const view = createView(body, position, dataPromise, true);
+    const view = createView(kind, body, position, dataPromise, true);
     modal = { dialog, view };
     // Une fois la fenêtre affichée, Leaflet doit recalculer la taille de sa carte.
     window.requestAnimationFrame(() => view.invalidate());
