@@ -1233,7 +1233,3 @@ html.modal-open {
   image-rendering: auto;
   filter: blur(2px);
 }
-.radar-badge.is-forecast,
-.radar-time.is-forecast {
-  color: #ffd180;
-}

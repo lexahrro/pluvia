@@ -220,9 +220,11 @@ function renderForecast(
 
   const radarSection = el('section', 'radar');
   radarSection.append(el('h2', undefined, 'Radar : les 2 dernières heures'));
+  const forecastSection = el('section', 'radar');
+  forecastSection.append(el('h2', undefined, 'Prévision : les 4 prochaines heures'));
 
   // Ordre d'affichage : pluie prévue, détail par créneau, radar, conditions actuelles, prochaines 48 h, soleil.
-  content.append(hero, chartCard, details.panel, radarSection);
+  content.append(hero, chartCard, details.panel, radarSection, forecastSection);
   const conditions = renderConditions(forecast.current, forecast.uvMaxToday, forecast.hours, forecast.rainTodayMm, forecast.air);
   if (conditions) content.append(conditions);
   content.append(hourlySection);
@@ -245,7 +247,9 @@ function renderForecast(
   }
 
   // La carte a besoin que son conteneur soit déjà dans la page.
-  radar = mountRadar(radarSection, position);
+  const pastMap = mountRadar(radarSection, position, 'past');
+  const forecastMap = mountRadar(forecastSection, position, 'forecast');
+  radar = { destroy: () => { pastMap.destroy(); forecastMap.destroy(); } };
 }
 
 async function load(): Promise<void> {
